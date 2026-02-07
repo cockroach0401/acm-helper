@@ -67,12 +67,13 @@ DEFAULT_SOLUTION_TEMPLATE = """你是一位经验丰富的竞赛程序员，精�
 
 ## 风格注入（系统可选）
 - 当前风格：{{prompt_style}}
-- 详细提示词：
+- 个性化提示词（优先级最高）：
 {{style_prompt_injection}}
+- 若个性化提示词与通用要求冲突，以个性化提示词为准。
 
-## 风格要求
+## 通用要求（优先级低于个性化提示词）
 - 若题目存在多种解法，可简要提及替代方案及其优劣对比
-- 使用 LaTeX 格式书写数学公式
+- 数学公式必须使用 Markdown 数学语法包裹：行内公式用 `$...$`，单行公式可用 `$$...$$`，以确保渲染正确
 """.strip()
 
 
@@ -138,25 +139,13 @@ DEFAULT_WEEKLY_STYLE_CUSTOM_INJECTION = """
 Follow the custom style guidance strictly.
 """.strip()
 DEFAULT_WEEKLY_STYLE_RIGOROUS_INJECTION = """
-Use rigorous derivation and proof.
-State assumptions clearly, define invariants if needed, and provide a step-by-step correctness argument.
-Prioritize formal reasoning over storytelling.
-If there are formulas, derive them explicitly and explain why each step is valid.
-Prefer theorem/lemma style structure when appropriate.
+以数学证明的标准呈现题解。文字部分需完整论证算法正确性：明确陈述引理或性质，给出必要且充分的证明，对贪心策略需说明交换论证或反证细节，对动态规划需证明最优子结构与无后效性，对图论算法需说明不变量的维护。代码部分要求逻辑结构清晰，每个函数职责单一，关键断言处可加 assert 辅助验证。样例部分需附带逐步解释：展示输入如何经过算法各阶段变换，中间变量取值如何演变，最终如何得出输出，使读者能够手动模拟验证。
 """.strip()
 DEFAULT_WEEKLY_STYLE_INTUITIVE_INJECTION = """
-Start with an intuitive picture first, then reveal the exact method.
-You may use a "Ramanujan stare" style metaphor for sudden insight, but still keep the final algorithm executable and precise.
-After intuition, provide a compact correctness explanation and implementation details.
-Use small examples to bridge intuition to formal method.
-Highlight the turning point from brute force thinking to the key insight.
+以启发式思维路径呈现题解。从拿到题目的第一直觉出发，描述观察到了哪些特殊结构、对称性或反常规律，如何从样例中捕捉到模式，如何通过手玩小数据建立猜想。强调“为什么会想到这个方法”而非“这个方法为什么对”，侧重类比、联想与经验迁移，例如“这个结构让人想起某类经典问题”或“如果把约束放宽会发生什么”。证明可以非形式化，用图示或极端情况验证来建立信心。代码部分保持正常可读性即可。
 """.strip()
 DEFAULT_WEEKLY_STYLE_CONCISE_INJECTION = """
-Be concise.
-Avoid long prose and keep each section short.
-Prefer bullet points and direct conclusions.
-Keep only essential proofs and skip repetitive explanations.
-Use compact section headers and prioritize actionable takeaways.
+以极简主义方式呈现题解。文字部分直接切入问题本质，用一到两段连贯的文字说明核心思路与关键结论，必要时给出一句话证明，省略冗余的背景铺垫与分步小标题。代码部分追求竞赛选手的实战风格：单字母或极短变量名，删除一切可从上下文推断的注释，仅在非显然的技巧处保留一行极简注释，整体代码行数压缩到最少。不输出复杂度分析，除非复杂度本身是题目考点。
 """.strip()
 
 
