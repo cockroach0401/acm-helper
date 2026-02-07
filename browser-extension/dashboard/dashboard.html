@@ -386,20 +386,16 @@
           <div class="form-group">
             <label data-i18n="label_weekly_prompt_style">Weekly Prompt Style</label>
             <select id="weekly-prompt-style">
-              <option value="none" data-i18n="style_none">None</option>
-              <option value="rigorous" data-i18n="style_rigorous">Rigorous</option>
-              <option value="intuitive" data-i18n="style_intuitive">Intuitive</option>
-              <option value="concise" data-i18n="style_concise">Concise</option>
+              <option value="custom" data-i18n="style_custom">Custom</option>
+              <option value="rigorous" data-i18n="style_rigorous">Rigorous (strict derivation and proof)</option>
+              <option value="intuitive" data-i18n="style_intuitive">Intuitive (Ramanujan stare method)</option>
+              <option value="concise" data-i18n="style_concise">Concise (too many words, keep short)</option>
             </select>
-          </div>
-          <div class="form-group">
-            <label data-i18n="label_weekly_style_descriptions">Weekly Style Descriptions (Frontend placeholders)</label>
-            <textarea id="style-desc-rigorous" rows="2" data-i18n-placeholder="placeholder_style_desc_rigorous"></textarea>
-            <textarea id="style-desc-intuitive" rows="2" data-i18n-placeholder="placeholder_style_desc_intuitive" style="margin-top:0.5rem;"></textarea>
-            <textarea id="style-desc-concise" rows="2" data-i18n-placeholder="placeholder_style_desc_concise" style="margin-top:0.5rem;"></textarea>
+            <div class="helper-note" data-i18n="hint_style_options">Choose a style to auto-inject prompt guidance into solution generation.</div>
           </div>
           <div class="form-group">
             <label data-i18n="label_weekly_style_injections">Weekly Style Prompt Injection Slots</label>
+            <textarea id="style-injection-custom" rows="3" data-i18n-placeholder="placeholder_style_injection_custom"></textarea>
             <textarea id="style-injection-rigorous" rows="3" data-i18n-placeholder="placeholder_style_injection_rigorous"></textarea>
             <textarea id="style-injection-intuitive" rows="3" data-i18n-placeholder="placeholder_style_injection_intuitive" style="margin-top:0.5rem;"></textarea>
             <textarea id="style-injection-concise" rows="3" data-i18n-placeholder="placeholder_style_injection_concise" style="margin-top:0.5rem;"></textarea>

@@ -70,12 +70,15 @@ def update_prompt_settings(
 
     weekly_prompt_style = req.weekly_prompt_style
     if weekly_prompt_style is None:
-        weekly_prompt_style = current.prompts.weekly_prompt_style or WeeklyPromptStyle.none
+        weekly_prompt_style = current.prompts.weekly_prompt_style or WeeklyPromptStyle.custom
 
     payload = {
         "solution_template": req.solution_template,
         "insight_template": insight_template,
         "weekly_prompt_style": weekly_prompt_style,
+        "weekly_style_custom_injection": req.weekly_style_custom_injection
+        if req.weekly_style_custom_injection is not None
+        else current.prompts.weekly_style_custom_injection,
         "weekly_style_rigorous_injection": req.weekly_style_rigorous_injection
         if req.weekly_style_rigorous_injection is not None
         else current.prompts.weekly_style_rigorous_injection,
@@ -85,15 +88,6 @@ def update_prompt_settings(
         "weekly_style_concise_injection": req.weekly_style_concise_injection
         if req.weekly_style_concise_injection is not None
         else current.prompts.weekly_style_concise_injection,
-        "weekly_style_rigorous_desc": req.weekly_style_rigorous_desc
-        if req.weekly_style_rigorous_desc is not None
-        else current.prompts.weekly_style_rigorous_desc,
-        "weekly_style_intuitive_desc": req.weekly_style_intuitive_desc
-        if req.weekly_style_intuitive_desc is not None
-        else current.prompts.weekly_style_intuitive_desc,
-        "weekly_style_concise_desc": req.weekly_style_concise_desc
-        if req.weekly_style_concise_desc is not None
-        else current.prompts.weekly_style_concise_desc,
     }
 
     try:

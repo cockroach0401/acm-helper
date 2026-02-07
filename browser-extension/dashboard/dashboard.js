@@ -7,12 +7,15 @@ const $$ = (s) => document.querySelectorAll(s);
 let pollTimer = null;
 
 const ALLOWED_AC_LANGUAGES = ['c', 'cpp', 'python', 'java'];
+const ALLOWED_PROMPT_STYLES = ['custom', 'rigorous', 'intuitive', 'concise'];
 
 const SOLUTION_TEMPLATE_VARIABLES = [
   '{{source}}',
   '{{id}}',
   '{{title}}',
   '{{status}}',
+  '{{prompt_style}}',
+  '{{style_prompt_injection}}',
   '{{content}}',
   '{{input_format}}',
   '{{output_format}}',
@@ -28,8 +31,6 @@ const WEEKLY_TEMPLATE_VARIABLES = [
   '{{period}}',
   '{{from_date}}',
   '{{to_date}}',
-  '{{prompt_style}}',
-  '{{style_prompt_injection}}',
   '{{stats_points_json}}',
   '{{stats_json}}',
   '{{problem_list_json}}'
@@ -547,16 +548,13 @@ function renderSettings(settings) {
   if (weeklyVarsEl) weeklyVarsEl.textContent = WEEKLY_TEMPLATE_VARIABLES.join('\n');
 
   const weeklyStyleEl = $('#weekly-prompt-style');
-  if (weeklyStyleEl) weeklyStyleEl.value = prompts.weekly_prompt_style || 'none';
+  if (weeklyStyleEl) {
+    const style = prompts.weekly_prompt_style || 'custom';
+    weeklyStyleEl.value = ALLOWED_PROMPT_STYLES.includes(style) ? style : 'custom';
+  }
 
-  const styleDescRigorousEl = $('#style-desc-rigorous');
-  if (styleDescRigorousEl) styleDescRigorousEl.value = prompts.weekly_style_rigorous_desc || '';
-
-  const styleDescIntuitiveEl = $('#style-desc-intuitive');
-  if (styleDescIntuitiveEl) styleDescIntuitiveEl.value = prompts.weekly_style_intuitive_desc || '';
-
-  const styleDescConciseEl = $('#style-desc-concise');
-  if (styleDescConciseEl) styleDescConciseEl.value = prompts.weekly_style_concise_desc || '';
+  const styleInjectionCustomEl = $('#style-injection-custom');
+  if (styleInjectionCustomEl) styleInjectionCustomEl.value = prompts.weekly_style_custom_injection || '';
 
   const styleInjectionRigorousEl = $('#style-injection-rigorous');
   if (styleInjectionRigorousEl) styleInjectionRigorousEl.value = prompts.weekly_style_rigorous_injection || '';
@@ -630,13 +628,12 @@ async function testAISettings() {
 }
 
 async function savePromptSettings() {
+  const selectedStyle = $('#weekly-prompt-style').value;
   const payload = {
     solution_template: $('#solution-template').value,
     insight_template: $('#weekly-template').value,
-    weekly_prompt_style: $('#weekly-prompt-style').value,
-    weekly_style_rigorous_desc: $('#style-desc-rigorous').value,
-    weekly_style_intuitive_desc: $('#style-desc-intuitive').value,
-    weekly_style_concise_desc: $('#style-desc-concise').value,
+    weekly_prompt_style: ALLOWED_PROMPT_STYLES.includes(selectedStyle) ? selectedStyle : 'custom',
+    weekly_style_custom_injection: $('#style-injection-custom').value,
     weekly_style_rigorous_injection: $('#style-injection-rigorous').value,
     weekly_style_intuitive_injection: $('#style-injection-intuitive').value,
     weekly_style_concise_injection: $('#style-injection-concise').value

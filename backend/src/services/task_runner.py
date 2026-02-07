@@ -45,6 +45,7 @@ class TaskRunner:
                     prompt_template=settings.prompts.solution_template,
                     ai_settings=settings.ai,
                     default_ac_language=settings.ui.default_ac_language.value,
+                    prompt_settings=settings.prompts,
                 )
                 output_path = self.fm.save_solution_file(problem.source, problem.id, content)
                 self.fm.update_task(

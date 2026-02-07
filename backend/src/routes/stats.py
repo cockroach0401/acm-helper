@@ -99,9 +99,12 @@ async def generate_insight(
         selected = []
         for p in all_problems:
             solved_date = resolve_solved_date(p)
-            if solved_date is None:
-                continue
-            if start <= solved_date <= end:
+            updated_date = p.updated_at.astimezone(UTC).date() if p.updated_at else None
+
+            in_week_by_solved = solved_date is not None and start <= solved_date <= end
+            in_week_by_updated = updated_date is not None and start <= updated_date <= end
+
+            if in_week_by_solved or in_week_by_updated:
                 selected.append(p)
 
         settings = fm.get_settings()
@@ -111,7 +114,6 @@ async def generate_insight(
             stats=stats,
             problems=selected,
             template=settings.prompts.insight_template,
-            prompt_settings=settings.prompts,
             solution_loader=fm.read_solution_file,
         )
         content = await insight_generator.generate(prompt, settings.ai)

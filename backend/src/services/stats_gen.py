@@ -6,21 +6,10 @@ from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 
 from ..models.problem import ProblemRecord, ProblemStatus
-from ..models.settings import AISettings, PromptSettings, WeeklyPromptStyle
+from ..models.settings import AISettings
 from ..models.stats import StatsPeriod, StatsPoint, StatsSeriesResponse
 from .ai_client import AIClient
 from .prompt_renderer import render_template
-
-
-def resolve_weekly_style_injection(prompt_settings: PromptSettings) -> str:
-    style = prompt_settings.weekly_prompt_style
-    if style == WeeklyPromptStyle.rigorous:
-        return prompt_settings.weekly_style_rigorous_injection
-    if style == WeeklyPromptStyle.intuitive:
-        return prompt_settings.weekly_style_intuitive_injection
-    if style == WeeklyPromptStyle.concise:
-        return prompt_settings.weekly_style_concise_injection
-    return ""
 
 
 def _to_utc_date(dt: datetime | None) -> date | None:
@@ -107,14 +96,21 @@ def build_insight_prompt(
     stats: StatsSeriesResponse,
     problems: list[ProblemRecord],
     template: str,
-    prompt_settings: PromptSettings | None = None,
     solution_loader: Callable[[str, str], str] | None = None,
 ) -> str:
+    def _normalize_text(value: str | None) -> str:
+        if value is None:
+            return ""
+        normalized = value.strip()
+        if normalized.lower() in {"", "none", "null", "(none)", "(no content)", "暂无", "无"}:
+            return ""
+        return normalized
+
     problem_list = []
     for p in problems:
         solution_content = ""
         if solution_loader is not None:
-            solution_content = solution_loader(p.source, p.id) or ""
+            solution_content = _normalize_text(solution_loader(p.source, p.id))
         problem_list.append(
             {
                 "source": p.source,
@@ -144,19 +140,11 @@ def build_insight_prompt(
             }
         )
 
-    selected_style = "none"
-    style_prompt_injection = ""
-    if prompt_settings is not None:
-        selected_style = prompt_settings.weekly_prompt_style.value
-        style_prompt_injection = resolve_weekly_style_injection(prompt_settings)
-
     values = {
         "insight_type": insight_type,
         "target": target,
         "month": target,
         "week": target,
-        "prompt_style": selected_style,
-        "style_prompt_injection": style_prompt_injection,
         "period": stats.period.value,
         "from_date": stats.from_date.isoformat(),
         "to_date": stats.to_date.isoformat(),
