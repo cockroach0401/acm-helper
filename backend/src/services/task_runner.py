@@ -1,0 +1,65 @@
+from __future__ import annotations
+
+import asyncio
+import os
+
+from ..models.problem import SolutionStatus
+from ..models.task import TaskStatus
+from ..storage.file_manager import FileManager
+from .solution_gen import SolutionGenerator
+
+
+class TaskRunner:
+    def __init__(self, fm: FileManager, solution_generator: SolutionGenerator):
+        self.fm = fm
+        self.solution_generator = solution_generator
+        self.max_concurrency = int(os.getenv("TASK_MAX_CONCURRENCY", "2"))
+        self._semaphore = asyncio.Semaphore(self.max_concurrency)
+
+    async def enqueue_solution_task(self, problem_key: str) -> str:
+        task = self.fm.create_task(problem_key)
+        self.fm.set_problem_solution_state(problem_key, SolutionStatus.queued)
+        asyncio.create_task(self._run_solution_task(task.task_id))
+        return task.task_id
+
+    async def _run_solution_task(self, task_id: str) -> None:
+        async with self._semaphore:
+            task = self.fm.get_task(task_id)
+            if task is None:
+                return
+
+            self.fm.update_task(task_id, status=TaskStatus.running, started=True)
+            self.fm.set_problem_solution_state(task.problem_key, SolutionStatus.running)
+
+            problem = self.fm.get_problem_by_key(task.problem_key)
+            if problem is None:
+                err = f"problem not found for key={task.problem_key}"
+                self.fm.update_task(task_id, status=TaskStatus.failed, error_message=err, finished=True)
+                self.fm.set_problem_solution_state(task.problem_key, SolutionStatus.failed)
+                return
+
+            try:
+                settings = self.fm.get_settings()
+                content = await self.solution_generator.generate(
+                    problem,
+                    prompt_template=settings.prompts.solution_template,
+                    ai_settings=settings.ai,
+                    default_ac_language=settings.ui.default_ac_language.value,
+                )
+                output_path = self.fm.save_solution_file(problem.source, problem.id, content)
+                self.fm.update_task(
+                    task_id,
+                    status=TaskStatus.succeeded,
+                    output_path=output_path,
+                    error_message="",
+                    finished=True,
+                )
+                self.fm.set_problem_solution_state(task.problem_key, SolutionStatus.done, mark_needs_solution=False)
+            except Exception as exc:
+                self.fm.update_task(
+                    task_id,
+                    status=TaskStatus.failed,
+                    error_message=str(exc),
+                    finished=True,
+                )
+                self.fm.set_problem_solution_state(task.problem_key, SolutionStatus.failed, mark_needs_solution=True)

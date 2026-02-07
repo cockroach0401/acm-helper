@@ -1,0 +1,421 @@
+﻿<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>ACM Helper</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">A</div>
+      <div class="brand-text" data-i18n="brand">ACM Helper</div>
+    </div>
+    <nav class="nav-links">
+      <button class="nav-item active" data-view="dashboard">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="7" height="9" x="3" y="3" rx="1" />
+          <rect width="7" height="5" x="14" y="3" rx="1" />
+          <rect width="7" height="9" x="14" y="12" rx="1" />
+          <rect width="7" height="5" x="3" y="16" rx="1" />
+        </svg>
+        <span data-i18n="nav_dashboard">Dashboard</span>
+      </button>
+      <button class="nav-item" data-view="problems">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <path d="M16 13H8" />
+          <path d="M16 17H8" />
+          <path d="M10 9H8" />
+        </svg>
+        <span data-i18n="nav_problems">Problems</span>
+      </button>
+      <button class="nav-item" data-view="reports">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+          <polyline points="14 2 14 8 20 8" />
+          <path d="M8 13h2" />
+          <path d="M8 17h2" />
+          <path d="M14 13h2" />
+          <path d="M14 17h2" />
+        </svg>
+        <span data-i18n="nav_reports">Reports</span>
+      </button>
+      <button class="nav-item" data-view="settings">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path
+            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+        <span data-i18n="nav_settings">Settings</span>
+      </button>
+    </nav>
+
+    <!-- Language & Theme Toggle -->
+    <div class="sidebar-footer">
+      <button id="lang-toggle" class="footer-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+          <path d="M2 12h20" />
+        </svg>
+        <span id="lang-label">中文</span>
+      </button>
+      <button id="theme-toggle" class="footer-btn">
+        <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg id="icon-sun" class="hidden" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- VIEW: Dashboard -->
+    <div id="view-dashboard" class="view active">
+      <div class="page-header">
+        <h1 class="page-title" data-i18n="page_dashboard">Dashboard</h1>
+        <div class="toolbar">
+          <input id="month" type="month" />
+          <button id="refresh-btn" class="btn btn-secondary" data-i18n="btn_refresh">Refresh</button>
+        </div>
+      </div>
+
+      <section class="card-grid" id="stats"></section>
+
+      <div class="card-grid" style="grid-template-columns: 2fr 1fr;">
+        <div class="section-card">
+          <div class="section-header">
+            <h2 class="section-title" data-i18n="section_pending_solutions">Pending Solutions</h2>
+            <button id="batch-generate-btn" class="btn" data-i18n="btn_generate_all">Generate All</button>
+          </div>
+          <div class="table-container">
+            <table id="pending-table">
+              <thead>
+                <tr>
+                  <th data-i18n="table_topic">Topic</th>
+                  <th data-i18n="table_status">Status</th>
+                  <th data-i18n="table_solution">Solution</th>
+                  <th data-i18n="table_updated">Updated</th>
+                  <th data-i18n="table_action">Action</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-header">
+            <h2 class="section-title" data-i18n="section_tasks">Tasks</h2>
+          </div>
+          <div class="table-container">
+            <table id="task-table">
+              <thead>
+                <tr>
+                  <th data-i18n="table_id">ID</th>
+                  <th data-i18n="table_status">Status</th>
+                  <th data-i18n="table_message">Message</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW: Problems -->
+    <div id="view-problems" class="view">
+      <div class="page-header">
+        <h1 class="page-title" data-i18n="page_problems">Problems</h1>
+      </div>
+
+      <!-- Filters & Problem List -->
+      <div class="section-card">
+        <div class="section-header" style="flex-wrap: wrap; gap: 1rem;">
+          <h2 class="section-title" data-i18n="section_problem_list">Problem List</h2>
+          <!-- Filters -->
+          <div style="display:flex; gap:0.5rem; flex:1; justify-content:flex-end; align-items:center;">
+            <input id="filter-keyword" type="text" data-i18n-placeholder="filter_keyword" placeholder="Keyword"
+              style="max-width:150px; padding:0.4rem;" />
+            <select id="filter-status" style="max-width:120px; padding:0.4rem;">
+              <option value="" selected data-i18n="status_all">All</option>
+              <option value="unsolved" data-i18n="status_unsolved">Unsolved</option>
+              <option value="attempted" data-i18n="status_attempted">Attempted</option>
+              <option value="solved" data-i18n="status_solved">Solved</option>
+            </select>
+            <select id="filter-source" style="max-width:120px; padding:0.4rem;">
+              <option value="" data-i18n="status_all">All</option>
+              <option value="codeforces">Codeforces</option>
+              <option value="nowcoder">Nowcoder</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table id="problems-table">
+            <thead>
+              <tr>
+                <th data-i18n="col_title">Title</th>
+                <th data-i18n="col_source">Source</th>
+                <th data-i18n="col_status">Status</th>
+                <th data-i18n="col_translation">Translation</th>
+                <th data-i18n="col_action">Action</th>
+              </tr>
+            </thead>
+            <tbody><!-- Rendered by JS --></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-header">
+          <h2 class="section-title" data-i18n="section_manual_import">Manual Import</h2>
+        </div>
+        <div class="card-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 1rem; gap: 0.75rem;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label data-i18n="label_import_source">Source</label>
+            <input id="import-source" type="text" data-i18n-placeholder="placeholder_import_source" placeholder="manual" />
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label data-i18n="label_import_id">ID</label>
+            <input id="import-id" type="text" data-i18n-placeholder="placeholder_import_id" placeholder="A1" />
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label data-i18n="label_import_title">Title</label>
+            <input id="import-title" type="text" data-i18n-placeholder="placeholder_import_title" placeholder="Demo" />
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label data-i18n="label_import_status">Status</label>
+            <select id="import-status">
+              <option value="unsolved" data-i18n="status_unsolved">Unsolved</option>
+              <option value="attempted" data-i18n="status_attempted">Attempted</option>
+              <option value="solved" data-i18n="status_solved">Solved</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label data-i18n="label_import_content">Content</label>
+          <textarea id="import-content" rows="4" data-i18n-placeholder="placeholder_import_content"></textarea>
+        </div>
+        <div class="card-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 1rem; gap: 0.75rem;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label data-i18n="label_import_input_format">Input Format</label>
+            <textarea id="import-input-format" rows="3" data-i18n-placeholder="placeholder_import_input_format"></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label data-i18n="label_import_output_format">Output Format</label>
+            <textarea id="import-output-format" rows="3" data-i18n-placeholder="placeholder_import_output_format"></textarea>
+          </div>
+        </div>
+        <div class="form-group">
+          <label data-i18n="label_import_constraints">Constraints</label>
+          <textarea id="import-constraints" rows="3" data-i18n-placeholder="placeholder_import_constraints"></textarea>
+        </div>
+        <div class="form-group">
+          <label data-i18n="label_import_ac_code">AC Code</label>
+          <textarea id="import-ac-code" rows="5" data-i18n-placeholder="placeholder_import_ac_code"></textarea>
+        </div>
+        <div class="form-group">
+          <label data-i18n="label_import_tags">Tags</label>
+          <input id="import-tags" type="text" data-i18n-placeholder="placeholder_import_tags" />
+        </div>
+        <button id="import-btn" class="btn" data-i18n="btn_import">Import Problems</button>
+      </div>
+    </div>
+
+    <!-- VIEW: Reports -->
+    <div id="view-reports" class="view">
+      <div class="page-header">
+        <h1 class="page-title" data-i18n="page_reports">Statistics & Reports</h1>
+      </div>
+
+      <!-- Statistics Section with Charts -->
+      <div class="section-card">
+        <div class="section-header">
+          <h2 class="section-title" data-i18n="section_statistics">Statistics</h2>
+        </div>
+
+        <div id="charts-container" style="display: flex; flex-direction: column; gap: 2rem;">
+          <!-- Chart 1: Activity Heatmap -->
+          <div>
+            <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);"
+              data-i18n="chart_activity">Activity</h3>
+            <div id="chart-activity-heatmap" class="heatmap-container">
+              <!-- JS Injected SVG -->
+              <div style="text-align:center; padding: 2rem; color: var(--text-muted);">Loading Activity...</div>
+            </div>
+          </div>
+
+          <!-- Chart 2: Weekly Progress -->
+          <div>
+            <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);"
+              data-i18n="chart_weekly">Weekly Progress</h3>
+            <div id="chart-weekly-bar" class="chart-bar-container">
+              <!-- JS Injected SVG -->
+            </div>
+            <div id="weekly-visual-summary" class="helper-note" style="margin-top:0.5rem;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly Report Section -->
+      <div class="section-card">
+        <div class="section-header">
+          <h2 class="section-title" data-i18n="card_weekly_report">Weekly Report</h2>
+        </div>
+        <div class="form-group">
+          <label data-i18n="label_select_week">Select Week</label>
+          <input id="week-picker" type="week" />
+        </div>
+        <div class="row-actions">
+          <button id="btn-gen-weekly" class="btn" data-i18n="btn_generate">Generate</button>
+          <button id="btn-view-weekly" class="btn btn-secondary" data-i18n="btn_view_report">View Report</button>
+        </div>
+        <div id="status-weekly" style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted);"></div>
+        <pre id="weekly-report-preview" class="hidden" style="margin-top: 1rem;"></pre>
+      </div>
+    </div>
+
+    <!-- VIEW: Settings -->
+    <div id="view-settings" class="view">
+      <div class="page-header">
+        <h1 class="page-title" data-i18n="page_settings">Settings</h1>
+      </div>
+
+      <div class="card-grid" style="grid-template-columns: 1fr 1fr;">
+        <div class="section-card">
+          <div class="section-header">
+            <h2 class="section-title" data-i18n="section_ai_provider">AI Provider</h2>
+            <button id="test-ai-btn" class="btn btn-secondary" style="padding:0.25rem 0.75rem; font-size:0.75rem;"
+              data-i18n="btn_test">Test</button>
+          </div>
+          <div class="form-group">
+            <label data-i18n="label_provider">Provider</label>
+            <select id="ai-provider">
+              <option value="openai_compatible">OpenAI Compatible</option>
+              <option value="mock">Mock</option>
+              <option value="anthropic">Anthropic</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label data-i18n="label_api_base">API Base URL</label>
+            <input id="ai-api-base" type="text" placeholder="e.g. http://localhost:11434/v1" />
+          </div>
+          <div class="form-group">
+            <label data-i18n="label_api_key">API Key</label>
+            <input id="ai-api-key" type="password" />
+          </div>
+          <div class="form-group">
+            <label data-i18n="label_model">Model</label>
+            <input id="ai-model" list="ai-model-datalist" placeholder="Select or type model..." />
+            <datalist id="ai-model-datalist"></datalist>
+            <textarea id="ai-model-options" class="hidden"></textarea>
+          </div>
+          <div class="form-group">
+            <div style="display:flex; gap:10px;">
+              <div style="flex:1">
+                <label data-i18n="label_temperature">Temperature</label>
+                <input id="ai-temperature" type="number" step="0.1" min="0" max="2" />
+              </div>
+              <div style="flex:1">
+                <label data-i18n="label_timeout">Timeout (s)</label>
+                <input id="ai-timeout" type="number" />
+              </div>
+            </div>
+          </div>
+          <button id="save-ai-btn" class="btn" data-i18n="btn_save_ai">Save AI Settings</button>
+          <pre id="ai-test-result" class="hidden" style="margin-top:1rem;"></pre>
+        </div>
+
+        <div class="section-card">
+          <div class="section-header">
+            <h2 class="section-title" data-i18n="section_templates">Prompt Templates & UI</h2>
+          </div>
+          <div class="form-group">
+            <label data-i18n="label_solution_template">Solution Prompt Template</label>
+            <textarea id="solution-template" rows="8"></textarea>
+          </div>
+          <div class="form-group">
+            <label data-i18n="label_weekly_template">Weekly Prompt Template</label>
+            <textarea id="weekly-template" rows="8"></textarea>
+          </div>
+          <div class="form-group">
+            <label data-i18n="label_weekly_template_vars">Weekly Template Variables</label>
+            <pre id="weekly-template-variables"></pre>
+          </div>
+          <div class="form-group">
+            <label data-i18n="label_solution_template_vars">Solution Template Variables</label>
+            <pre id="solution-template-variables"></pre>
+          </div>
+          <div class="form-group">
+            <label data-i18n="label_default_language">Default Language (Template Variable)</label>
+            <select id="default-ac-language">
+              <option value="c">C</option>
+              <option value="cpp">C++</option>
+              <option value="python">Python</option>
+              <option value="java">Java</option>
+            </select>
+            <div class="helper-note" data-i18n="hint_default_language_variable">This value is injected as {{default_ac_language}} in solution prompt templates.</div>
+          </div>
+          <div class="form-group">
+            <label data-i18n="label_weekly_prompt_style">Weekly Prompt Style</label>
+            <select id="weekly-prompt-style">
+              <option value="none" data-i18n="style_none">None</option>
+              <option value="rigorous" data-i18n="style_rigorous">Rigorous</option>
+              <option value="intuitive" data-i18n="style_intuitive">Intuitive</option>
+              <option value="concise" data-i18n="style_concise">Concise</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label data-i18n="label_weekly_style_descriptions">Weekly Style Descriptions (Frontend placeholders)</label>
+            <textarea id="style-desc-rigorous" rows="2" data-i18n-placeholder="placeholder_style_desc_rigorous"></textarea>
+            <textarea id="style-desc-intuitive" rows="2" data-i18n-placeholder="placeholder_style_desc_intuitive" style="margin-top:0.5rem;"></textarea>
+            <textarea id="style-desc-concise" rows="2" data-i18n-placeholder="placeholder_style_desc_concise" style="margin-top:0.5rem;"></textarea>
+          </div>
+          <div class="form-group">
+            <label data-i18n="label_weekly_style_injections">Weekly Style Prompt Injection Slots</label>
+            <textarea id="style-injection-rigorous" rows="3" data-i18n-placeholder="placeholder_style_injection_rigorous"></textarea>
+            <textarea id="style-injection-intuitive" rows="3" data-i18n-placeholder="placeholder_style_injection_intuitive" style="margin-top:0.5rem;"></textarea>
+            <textarea id="style-injection-concise" rows="3" data-i18n-placeholder="placeholder_style_injection_concise" style="margin-top:0.5rem;"></textarea>
+          </div>
+          <div class="row-actions">
+            <button id="save-prompts-btn" class="btn" data-i18n="btn_save_templates">Save Templates</button>
+            <button id="save-ui-settings-btn" class="btn btn-secondary" data-i18n="btn_save_ui">Save UI
+              Config</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <div id="toast"></div>
+    <script type="module" src="dashboard.js"></script>
+</body>
+
+</html>

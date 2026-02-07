@@ -1,0 +1,29 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+backend/.venv/
+
+# Build / logs
+dist/
+build/
+*.log
+
+# Runtime generated backend data (keep repo release clean)
+backend/data/**
+!backend/data/.gitkeep
+

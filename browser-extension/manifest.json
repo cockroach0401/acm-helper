@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "ACM Helper",
+  "version": "2.0.0",
+  "description": "ACM 刷题状态总览与题解管理助手",
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*",
+    "https://codeforces.com/*",
+    "https://ac.nowcoder.com/*",
+    "https://www.nowcoder.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://codeforces.com/contest/*/problem/*",
+        "https://codeforces.com/gym/*/problem/*",
+        "https://codeforces.com/group/*/contest/*/problem/*",
+        "https://codeforces.com/group/*/gym/*/problem/*"
+      ],
+      "js": [
+        "content/codeforces_scraper.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://ac.nowcoder.com/acm/problem/*",
+        "https://ac.nowcoder.com/acm/contest/*/*"
+      ],
+      "js": [
+        "content/nowcoder_scraper.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.nowcoder.com/practice/*"
+      ],
+      "js": [
+        "content/nowcoder_practice_scraper.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html"
+  }
+}

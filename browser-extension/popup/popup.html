@@ -1,0 +1,90 @@
+﻿<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>ACM Helper</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">A</div>
+      <div class="brand-text" data-i18n="title">ACM Helper</div>
+    </div>
+    <div class="header-actions">
+      <button id="btn-settings" class="icon-btn" data-i18n-title="btn_settings">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path
+            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Main View -->
+    <div id="view-main">
+      <div class="card info-card">
+        <div class="info-label" data-i18n="lbl_current_page">Current Page</div>
+        <div id="problem-title" class="info-value">...</div>
+      </div>
+
+      <div class="actions">
+        <button id="btn-crawl" class="btn btn-primary" data-i18n="btn_crawl" disabled>Import Problem</button>
+        <button id="btn-dashboard" class="btn btn-secondary" data-i18n="btn_dashboard">Open Dashboard</button>
+      </div>
+
+      <div id="msg" class="message"></div>
+    </div>
+
+    <!-- Import Overlay -->
+    <div id="view-import" class="overlay hidden">
+      <h3 data-i18n="btn_confirm">Confirm Import</h3>
+
+      <div class="status-selector">
+        <label class="status-option">
+          <input type="radio" name="status" value="unsolved" checked />
+          <span class="status-badge status-pending" data-i18n="status_unsolved">Unsolved</span>
+        </label>
+        <label class="status-option">
+          <input type="radio" name="status" value="attempted" />
+          <span class="status-badge status-warning" data-i18n="status_attempted">Attempted</span>
+        </label>
+        <label class="status-option">
+          <input type="radio" name="status" value="solved" />
+          <span class="status-badge status-completed" data-i18n="status_solved">Solved</span>
+        </label>
+      </div>
+
+      <div id="code-section" class="hidden">
+        <div class="code-header">
+          <label data-i18n="lbl_code" style="font-size:12px; margin-bottom:4px; display:block;">AC Code</label>
+          <div class="code-lang-wrap">
+            <label for="input-language" data-i18n="lbl_language" style="font-size:11px; margin:0 0 4px; display:block;">Language</label>
+            <select id="input-language">
+              <option value="c">C</option>
+              <option value="cpp" selected>C++</option>
+              <option value="python">Python</option>
+              <option value="java">Java</option>
+            </select>
+          </div>
+        </div>
+        <textarea id="input-code" rows="5" data-i18n-placeholder="placeholder_code"></textarea>
+      </div>
+
+      <div class="overlay-actions">
+        <button id="btn-cancel" class="btn btn-secondary" data-i18n="btn_cancel">Cancel</button>
+        <button id="btn-confirm-import" class="btn btn-primary" data-i18n="btn_confirm">Import</button>
+      </div>
+    </div>
+  </main>
+
+  <script src="popup.js" type="module"></script>
+</body>
+
+</html>
