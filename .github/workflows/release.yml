@@ -26,12 +26,18 @@ jobs:
         run: |
           cd backend
           pyinstaller build.spec
+          Copy-Item -Path "icon.ico" -Destination "dist/icon.ico"
+      
+      - name: Package Backend
+        run: |
+          cd backend/dist
+          Compress-Archive -Path ACMHelper.exe,icon.ico -DestinationPath ACMHelper-Windows.zip
       
       - name: Upload Backend Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ACMHelper-Windows
-          path: backend/dist/ACMHelper.exe
+          path: backend/dist/ACMHelper-Windows.zip
 
   build-extension:
     runs-on: ubuntu-latest
@@ -62,6 +68,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            ACMHelper-Windows/ACMHelper.exe
+            ACMHelper-Windows/ACMHelper-Windows.zip
             ACMHelper-Extension/acm-helper-extension.zip
           generate_release_notes: true

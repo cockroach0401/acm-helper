@@ -12,8 +12,7 @@ class ProblemTranslator:
         self.ai_client = ai_client
 
     async def translate_to_zh(self, problem: ProblemRecord, ai_settings: AISettings) -> ProblemTranslationPayload:
-        if ai_settings.provider == AIProvider.mock:
-            return self._mock_translate(problem)
+
 
         prompt = self._build_translation_prompt(problem)
         raw = await self.ai_client.generate_text(prompt, ai_settings)
@@ -61,17 +60,4 @@ class ProblemTranslator:
             raise RuntimeError("translation response root must be JSON object")
         return loaded
 
-    def _mock_translate(self, problem: ProblemRecord) -> ProblemTranslationPayload:
-        def _prefix(v: str) -> str:
-            text = (v or "").strip()
-            if not text:
-                return ""
-            return f"【模拟翻译】{text}"
 
-        return ProblemTranslationPayload(
-            title_zh=_prefix(problem.title),
-            content_zh=_prefix(problem.content),
-            input_format_zh=_prefix(problem.input_format),
-            output_format_zh=_prefix(problem.output_format),
-            constraints_zh=_prefix(problem.constraints),
-        )

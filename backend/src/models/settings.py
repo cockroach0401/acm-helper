@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 
 
 class AIProvider(str, Enum):
-    mock = "mock"
     openai_compatible = "openai_compatible"
     anthropic = "anthropic"
 
@@ -136,7 +135,7 @@ DEFAULT_INSIGHT_TEMPLATE = """你是一位资深的 ACM 竞赛教练与数据分
 
 
 DEFAULT_WEEKLY_STYLE_CUSTOM_INJECTION = """
-Follow the custom style guidance strictly.
+当前暂无自定义设置，请根据需要自行添加。
 """.strip()
 DEFAULT_WEEKLY_STYLE_RIGOROUS_INJECTION = """
 以数学证明的标准呈现题解。文字部分需完整论证算法正确性：明确陈述引理或性质，给出必要且充分的证明，对贪心策略需说明交换论证或反证细节，对动态规划需证明最优子结构与无后效性，对图论算法需说明不变量的维护。代码部分要求逻辑结构清晰，每个函数职责单一，关键断言处可加 assert 辅助验证。样例部分需附带逐步解释：展示输入如何经过算法各阶段变换，中间变量取值如何演变，最终如何得出输出，使读者能够手动模拟验证。
@@ -149,22 +148,64 @@ DEFAULT_WEEKLY_STYLE_CONCISE_INJECTION = """
 """.strip()
 
 
-class AISettings(BaseModel):
-    provider: AIProvider = AIProvider.mock
+class AIProfile(BaseModel):
+    id: str = "default-1"
+    name: str = "Default"
+    provider: AIProvider = AIProvider.openai_compatible
     api_base: str = ""
     api_key: str = ""
-    model: str = "gpt-4o-mini"
-    model_options: list[str] = Field(default_factory=lambda: ["gpt-4o-mini"])
+    model: str = "gpt-5.2"
+    model_options: list[str] = Field(default_factory=lambda: ["gpt-5.2"])
     temperature: float = 0.2
     timeout_seconds: int = 120
+
+
+class AISettings(BaseModel):
+    active_profile_id: str = "default-1"
+    profiles: list[AIProfile] = Field(default_factory=lambda: [AIProfile()])
+
+    def resolve_active_profile(self) -> AIProfile:
+        if not self.profiles:
+            profile = AIProfile()
+            self.profiles = [profile]
+            self.active_profile_id = profile.id
+            return profile
+        for profile in self.profiles:
+            if profile.id == self.active_profile_id:
+                return profile
+        self.active_profile_id = self.profiles[0].id
+        return self.profiles[0]
 
 
 class AISettingsUpdateRequest(BaseModel):
     provider: AIProvider
     api_base: str = ""
     api_key: str = ""
-    model: str = "gpt-4o-mini"
-    model_options: list[str] = Field(default_factory=lambda: ["gpt-4o-mini"])
+    model: str = "gpt-5.2"
+    model_options: list[str] = Field(default_factory=lambda: ["gpt-5.2"])
+    temperature: float = 0.2
+    timeout_seconds: int = 120
+
+
+class AIProfileCreateRequest(BaseModel):
+    name: str = "New Provider"
+    provider: AIProvider = AIProvider.openai_compatible
+    api_base: str = ""
+    api_key: str = ""
+    model: str = "gpt-5.2"
+    model_options: list[str] = Field(default_factory=lambda: ["gpt-5.2"])
+    temperature: float = 0.2
+    timeout_seconds: int = 120
+    set_active: bool = True
+
+
+class AIProfileUpdateRequest(BaseModel):
+    name: str
+    provider: AIProvider
+    api_base: str = ""
+    api_key: str = ""
+    model: str = "gpt-5.2"
+    model_options: list[str] = Field(default_factory=lambda: ["gpt-5.2"])
     temperature: float = 0.2
     timeout_seconds: int = 120
 
@@ -201,4 +242,3 @@ class SettingsBundle(BaseModel):
     ai: AISettings = Field(default_factory=AISettings)
     prompts: PromptSettings = Field(default_factory=PromptSettings)
     ui: UiSettings = Field(default_factory=UiSettings)
-

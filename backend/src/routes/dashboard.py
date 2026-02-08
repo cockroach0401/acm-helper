@@ -27,6 +27,7 @@ def get_overview(
     tasks = fm.list_tasks()[:50]
     insight = fm.get_insight_status("weekly", _current_week())
     settings = fm.get_settings()
+    active_profile = settings.ai.resolve_active_profile()
 
     status_counter = Counter([p.status.value for p in problems])
     sol_counter = Counter([p.solution_status.value for p in problems])
@@ -51,8 +52,9 @@ def get_overview(
         "tasks": [t.model_dump(mode="json") for t in tasks],
         "insight": insight.model_dump(mode="json"),
         "ai": {
-            "provider": settings.ai.provider.value,
-            "model": settings.ai.model,
+            "provider": active_profile.provider.value,
+            "provider_name": active_profile.name,
+            "model": active_profile.model,
         },
     }
 

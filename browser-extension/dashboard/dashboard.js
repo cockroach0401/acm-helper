@@ -5,6 +5,13 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 
 let pollTimer = null;
+let aiProfilesState = {
+  activeProfileId: '',
+  selectedProfileId: '',
+  profiles: []
+};
+let isSolutionTemplateVarsOpen = false;
+let isWeeklyTemplateVarsOpen = false;
 
 const ALLOWED_AC_LANGUAGES = ['c', 'cpp', 'python', 'java'];
 const ALLOWED_PROMPT_STYLES = ['custom', 'rigorous', 'intuitive', 'concise'];
@@ -68,6 +75,8 @@ function applyTranslations() {
       opt.textContent = t(opt.getAttribute('data-i18n'));
     }
   });
+
+  renderTemplateVarsVisibility();
 }
 
 function toggleLanguage() {
@@ -77,6 +86,7 @@ function toggleLanguage() {
   // Rerender lists to update status badges etc if they use raw text
   loadOverview().catch(() => { });
   loadProblems().catch(() => { });
+  loadSettings(aiProfilesState.selectedProfileId).catch(() => { });
 }
 
 // --- Theme ---
@@ -515,28 +525,265 @@ async function generateSolution(key) {
 
 // --- Settings Rendering ---
 
-function renderSettings(settings) {
+function escapeHtml(raw) {
+  return String(raw ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function normalizeAiProfile(raw, fallbackId, fallbackName) {
+  const id = String(raw?.id || fallbackId || '').trim() || fallbackId;
+  const name = String(raw?.name || fallbackName || '').trim() || fallbackName;
+  const provider = raw?.provider === 'anthropic' ? 'anthropic' : 'openai_compatible';
+  const api_base = String(raw?.api_base || '').trim();
+  const api_key = String(raw?.api_key || '').trim();
+  const modelOptionsRaw = Array.isArray(raw?.model_options) ? raw.model_options : [];
+  const model_options = [...new Set(modelOptionsRaw.map(v => String(v).trim()).filter(Boolean))];
+  const model = String(raw?.model || model_options[0] || 'gpt-4o-mini').trim() || 'gpt-4o-mini';
+  if (!model_options.length) model_options.push(model);
+  if (!model_options.includes(model)) model_options.push(model);
+  const temperatureValue = Number(raw?.temperature);
+  const timeoutValue = Number(raw?.timeout_seconds);
+
+  return {
+    id,
+    name,
+    provider,
+    api_base,
+    api_key,
+    model,
+    model_options,
+    temperature: Number.isFinite(temperatureValue) ? temperatureValue : 0.2,
+    timeout_seconds: Number.isFinite(timeoutValue) ? timeoutValue : 120
+  };
+}
+
+function normalizeAiSettings(ai) {
+  let profiles = [];
+  if (Array.isArray(ai?.profiles) && ai.profiles.length) {
+    profiles = ai.profiles.map((raw, idx) => normalizeAiProfile(raw, `profile-${idx + 1}`, `Provider ${idx + 1}`));
+  } else {
+    profiles = [normalizeAiProfile(ai || {}, 'default-1', 'Default')];
+  }
+
+  const usedIds = new Set();
+  profiles = profiles.map((profile, idx) => {
+    let nextId = profile.id || `profile-${idx + 1}`;
+    if (!nextId) nextId = `profile-${idx + 1}`;
+    let candidate = nextId;
+    let suffix = 2;
+    while (usedIds.has(candidate)) {
+      candidate = `${nextId}-${suffix}`;
+      suffix += 1;
+    }
+    usedIds.add(candidate);
+    return { ...profile, id: candidate };
+  });
+
+  let activeProfileId = String(ai?.active_profile_id || '').trim();
+  if (!profiles.some(profile => profile.id === activeProfileId)) {
+    activeProfileId = profiles[0].id;
+  }
+
+  return { activeProfileId, profiles };
+}
+
+function getAiProfileById(profileId) {
+  return aiProfilesState.profiles.find(profile => profile.id === profileId) || null;
+}
+
+function renderModelOptions(options, selectedModel) {
+  const datalist = $('#ai-model-datalist');
+  if (datalist) datalist.innerHTML = options.map(m => `<option value="${escapeHtml(m)}">`).join('');
+
+  const modelListEl = $('#ai-model-list');
+  if (!modelListEl) return;
+
+  modelListEl.innerHTML = options.map(model => `
+      <div class="model-tag">
+        <span>${escapeHtml(model)}</span>
+        <button type="button" class="delete-model-btn" data-model="${escapeHtml(model)}" aria-label="delete-model">x</button>
+      </div>
+    `).join('');
+
+  modelListEl.querySelectorAll('.delete-model-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const model = btn.dataset.model || '';
+      const currentOptions = ($('#ai-model-options').value || '')
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(Boolean);
+      let nextOptions = currentOptions.filter(item => item !== model);
+      const modelInput = $('#ai-model');
+      const currentModel = (modelInput?.value || '').trim();
+      if (!nextOptions.length) {
+        nextOptions = [currentModel || 'gpt-4o-mini'];
+      }
+      if (modelInput && currentModel === model) {
+        modelInput.value = nextOptions[0];
+      }
+      $('#ai-model-options').value = nextOptions.join('\n');
+      renderModelOptions(nextOptions, modelInput?.value?.trim() || nextOptions[0]);
+    });
+  });
+}
+
+function readAiProfileForm() {
+  const modelInput = $('#ai-model');
+  const currentOptionsStr = $('#ai-model-options').value || '';
+  const modelOptions = [...new Set(
+    currentOptionsStr
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(Boolean)
+  )];
+
+  const selectedModel = (modelInput?.value || '').trim();
+  const model = selectedModel || modelOptions[0] || 'gpt-4o-mini';
+  if (!modelOptions.length) modelOptions.push(model);
+  if (!modelOptions.includes(model)) modelOptions.push(model);
+
+  const temperature = Number($('#ai-temperature').value);
+  const timeout = Number($('#ai-timeout').value);
+
+  return {
+    name: ($('#ai-provider-name').value || '').trim(),
+    provider: $('#ai-provider').value || 'openai_compatible',
+    api_base: ($('#ai-api-base').value || '').trim(),
+    api_key: ($('#ai-api-key').value || '').trim(),
+    model,
+    model_options: modelOptions,
+    temperature: Number.isFinite(temperature) ? temperature : 0.2,
+    timeout_seconds: Number.isFinite(timeout) ? timeout : 120
+  };
+}
+
+function normalizeAiPayloadForCompare(payload) {
+  const options = [...new Set((payload.model_options || []).map(v => String(v).trim()).filter(Boolean))];
+  const model = String(payload.model || options[0] || 'gpt-4o-mini').trim() || 'gpt-4o-mini';
+  if (!options.length) options.push(model);
+  if (!options.includes(model)) options.push(model);
+  return {
+    name: String(payload.name || '').trim(),
+    provider: payload.provider === 'anthropic' ? 'anthropic' : 'openai_compatible',
+    api_base: String(payload.api_base || '').trim(),
+    api_key: String(payload.api_key || '').trim(),
+    model,
+    model_options: options,
+    temperature: Number(payload.temperature ?? 0.2),
+    timeout_seconds: Number(payload.timeout_seconds ?? 120)
+  };
+}
+
+function isAiProfileDirty(profileId = aiProfilesState.selectedProfileId) {
+  const profile = getAiProfileById(profileId);
+  if (!profile) return false;
+  const currentForm = normalizeAiPayloadForCompare(readAiProfileForm());
+  const baseline = normalizeAiPayloadForCompare(profile);
+  return JSON.stringify(currentForm) !== JSON.stringify(baseline);
+}
+
+function fillAiProfileForm(profile) {
+  if (!profile) return;
+  $('#ai-provider-name').value = profile.name || '';
+
+  const providerSelect = $('#ai-provider');
+  const provider = profile.provider || 'openai_compatible';
+  const exists = Array.from(providerSelect.options).some(opt => opt.value === provider);
+  providerSelect.value = exists ? provider : 'openai_compatible';
+
+  $('#ai-api-base').value = profile.api_base || '';
+  $('#ai-api-key').value = profile.api_key || '';
+  $('#ai-model').value = profile.model || profile.model_options[0] || 'gpt-4o-mini';
+  $('#ai-model-options').value = (profile.model_options || []).join('\n');
+  $('#ai-temperature').value = profile.temperature ?? 0.2;
+  $('#ai-timeout').value = profile.timeout_seconds ?? 120;
+  renderModelOptions(profile.model_options || [profile.model || 'gpt-4o-mini'], profile.model);
+}
+
+async function selectAiProfile(profileId) {
+  if (!profileId || profileId === aiProfilesState.selectedProfileId) return;
+  if (isAiProfileDirty(aiProfilesState.selectedProfileId)) {
+    const saved = await saveAISettings({ silent: true });
+    if (!saved) return;
+  }
+  aiProfilesState.selectedProfileId = profileId;
+  fillAiProfileForm(getAiProfileById(profileId));
+  renderAiProfileCards();
+}
+
+function renderAiProfileCards() {
+  const container = $('#ai-profile-list');
+  if (!container) return;
+
+  container.innerHTML = aiProfilesState.profiles.map(profile => {
+    const isActive = profile.id === aiProfilesState.activeProfileId;
+    const isSelected = profile.id === aiProfilesState.selectedProfileId;
+    const activePart = isActive
+      ? `<span class="ai-active-badge">${t('label_active_provider')}</span>`
+      : `<button type="button" class="btn btn-sm btn-secondary ai-activate-btn" data-profile-id="${escapeHtml(profile.id)}">${t('btn_activate_provider')}</button>`;
+    const disabledDelete = aiProfilesState.profiles.length <= 1 ? 'disabled' : '';
+
+    return `
+      <div class="ai-profile-card${isActive ? ' active' : ''}${isSelected ? ' selected' : ''}" data-profile-id="${escapeHtml(profile.id)}">
+        <div class="ai-profile-main">
+          <div class="ai-profile-name">${escapeHtml(profile.name)}</div>
+          <div class="ai-profile-meta">${escapeHtml(profile.provider)} · ${escapeHtml(profile.model)}</div>
+        </div>
+        <div class="ai-profile-actions">
+          ${activePart}
+          <button type="button" class="btn btn-sm btn-secondary ai-edit-btn" data-profile-id="${escapeHtml(profile.id)}">${t('btn_edit_provider')}</button>
+          <button type="button" class="btn btn-sm btn-danger ai-delete-btn" data-profile-id="${escapeHtml(profile.id)}" ${disabledDelete}>${t('btn_delete_provider')}</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.querySelectorAll('.ai-profile-card').forEach(card => {
+    card.addEventListener('click', (event) => {
+      if (event.target.closest('button')) return;
+      selectAiProfile(card.dataset.profileId || '');
+    });
+  });
+
+  container.querySelectorAll('.ai-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => selectAiProfile(btn.dataset.profileId || ''));
+  });
+
+  container.querySelectorAll('.ai-activate-btn').forEach(btn => {
+    btn.addEventListener('click', () => activateAiProfile(btn.dataset.profileId || ''));
+  });
+
+  container.querySelectorAll('.ai-delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => deleteAiProfile(btn.dataset.profileId || ''));
+  });
+}
+
+function renderAiSettings(ai, preferredProfileId = '') {
+  const normalized = normalizeAiSettings(ai || {});
+  aiProfilesState.activeProfileId = normalized.activeProfileId;
+  aiProfilesState.profiles = normalized.profiles;
+
+  let selectedProfileId = preferredProfileId || aiProfilesState.selectedProfileId || normalized.activeProfileId;
+  if (!aiProfilesState.profiles.some(profile => profile.id === selectedProfileId)) {
+    selectedProfileId = normalized.activeProfileId || aiProfilesState.profiles[0]?.id || '';
+  }
+
+  aiProfilesState.selectedProfileId = selectedProfileId;
+  fillAiProfileForm(getAiProfileById(selectedProfileId));
+  renderAiProfileCards();
+}
+
+function renderSettings(settings, preferredProfileId = '') {
   const ai = settings.ai || {};
   const prompts = settings.prompts || {};
   const ui = settings.ui || {};
-  const options = Array.isArray(ai.model_options) && ai.model_options.length ? ai.model_options : [ai.model || 'gpt-4o-mini'];
 
-  const providerSelect = $('#ai-provider');
-  if (providerSelect) providerSelect.value = ai.provider || 'mock';
-
-  $('#ai-api-base').value = ai.api_base || '';
-  $('#ai-api-key').value = ai.api_key || '';
-
-  const modelInput = $('#ai-model');
-  modelInput.value = ai.model || options[0] || 'gpt-4o-mini';
-
-  const datalist = $('#ai-model-datalist');
-  datalist.innerHTML = options.map(m => `<option value="${m}">`).join('');
-
-  $('#ai-model-options').value = options.join('\n');
-
-  $('#ai-temperature').value = ai.temperature ?? 0.2;
-  $('#ai-timeout').value = ai.timeout_seconds ?? 120;
+  renderAiSettings(ai, preferredProfileId);
 
   $('#solution-template').value = prompts.solution_template || '';
   $('#weekly-template').value = prompts.insight_template || '';
@@ -547,10 +794,16 @@ function renderSettings(settings) {
   const weeklyVarsEl = $('#weekly-template-variables');
   if (weeklyVarsEl) weeklyVarsEl.textContent = WEEKLY_TEMPLATE_VARIABLES.join('\n');
 
+  renderTemplateVarsVisibility();
+
   const weeklyStyleEl = $('#weekly-prompt-style');
   if (weeklyStyleEl) {
-    const style = prompts.weekly_prompt_style || 'custom';
-    weeklyStyleEl.value = ALLOWED_PROMPT_STYLES.includes(style) ? style : 'custom';
+    const style = prompts.weekly_prompt_style || 'rigorous';
+    weeklyStyleEl.value = ALLOWED_PROMPT_STYLES.includes(style) ? style : 'rigorous';
+
+    weeklyStyleEl.removeEventListener('change', updateStyleInjectionVisibility);
+    weeklyStyleEl.addEventListener('change', updateStyleInjectionVisibility);
+    updateStyleInjectionVisibility();
   }
 
   const styleInjectionCustomEl = $('#style-injection-custom');
@@ -573,41 +826,77 @@ function renderSettings(settings) {
   if (acLangEl) acLangEl.value = defaultAcLanguage;
 }
 
-// --- API Actions ---
-
-async function loadSettings() {
-  const settings = await api('/api/settings');
-  renderSettings(settings);
-}
-
-async function saveAISettings() {
-  const currentOptionsStr = $('#ai-model-options').value || '';
-  const options = currentOptionsStr.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-
-  const selected = $('#ai-model').value.trim();
-  if (selected && !options.includes(selected)) {
-    options.push(selected);
+function renderTemplateVarsVisibility() {
+  const solutionPanel = $('#solution-template-vars-panel');
+  if (solutionPanel) {
+    solutionPanel.classList.toggle('hidden', !isSolutionTemplateVarsOpen);
   }
 
-  const payload = {
-    provider: $('#ai-provider').value,
-    api_base: $('#ai-api-base').value.trim(),
-    api_key: $('#ai-api-key').value.trim(),
-    model: selected || options[0] || 'gpt-4o-mini',
-    model_options: options,
-    temperature: Number($('#ai-temperature').value || 0.2),
-    timeout_seconds: Number($('#ai-timeout').value || 120)
-  };
+  const weeklyPanel = $('#weekly-template-vars-panel');
+  if (weeklyPanel) {
+    weeklyPanel.classList.toggle('hidden', !isWeeklyTemplateVarsOpen);
+  }
 
+  const solutionBtn = $('#toggle-solution-template-vars-btn');
+  if (solutionBtn) {
+    solutionBtn.textContent = isSolutionTemplateVarsOpen ? t('btn_hide_template_vars') : t('btn_show_template_vars');
+  }
+
+  const weeklyBtn = $('#toggle-weekly-template-vars-btn');
+  if (weeklyBtn) {
+    weeklyBtn.textContent = isWeeklyTemplateVarsOpen ? t('btn_hide_template_vars') : t('btn_show_template_vars');
+  }
+}
+
+function toggleSolutionTemplateVars() {
+  isSolutionTemplateVarsOpen = !isSolutionTemplateVarsOpen;
+  renderTemplateVarsVisibility();
+}
+
+function toggleWeeklyTemplateVars() {
+  isWeeklyTemplateVarsOpen = !isWeeklyTemplateVarsOpen;
+  renderTemplateVarsVisibility();
+}
+
+function updateStyleInjectionVisibility() {
+  const style = $('#weekly-prompt-style').value;
+  const ids = ['custom', 'rigorous', 'intuitive', 'concise'];
+
+  ids.forEach(id => {
+    const el = $(`#style-injection-${id}`);
+    if (el) {
+      el.classList.toggle('hidden', id !== style);
+    }
+  });
+}
+
+// --- API Actions ---
+
+async function loadSettings(preferredProfileId = '') {
+  const settings = await api('/api/settings');
+  renderSettings(settings, preferredProfileId);
+}
+
+async function saveAISettings({ silent = false } = {}) {
+  const profile = getAiProfileById(aiProfilesState.selectedProfileId);
+  if (!profile) return false;
+  const payload = readAiProfileForm();
+  if (!payload.name) {
+    toast(t('msg_provider_name_empty'));
+    return false;
+  }
   try {
-    await api('/api/settings/ai', {
+    await api(`/api/settings/ai/profiles/${encodeURIComponent(profile.id)}`, {
       method: 'PUT',
       body: JSON.stringify(payload)
     });
-    toast(t('msg_ai_saved'));
+    if (!silent) toast(t('msg_ai_saved'));
+    await loadSettings(profile.id);
     await loadOverview();
+    return true;
   } catch (err) {
     toast(`${t('msg_error')}: ${err.message}`);
+    return false;
   }
 }
 
@@ -617,12 +906,85 @@ async function testAISettings() {
   resEl.textContent = t('msg_testing');
 
   try {
-    const data = await api('/api/settings/ai/test', { method: 'POST' });
+    const profileId = aiProfilesState.selectedProfileId;
+    const endpoint = profileId
+      ? `/api/settings/ai/profiles/${encodeURIComponent(profileId)}/test`
+      : '/api/settings/ai/test';
+    const data = await api(endpoint, { method: 'POST' });
     resEl.textContent = JSON.stringify(data, null, 2);
     if (data.ok) toast(t('msg_connection_success'));
     else toast(t('msg_connection_failed'));
   } catch (err) {
     resEl.textContent = err.message;
+    toast(`${t('msg_error')}: ${err.message}`);
+  }
+}
+
+async function addAiProvider() {
+  if (isAiProfileDirty()) {
+    const saved = await saveAISettings({ silent: true });
+    if (!saved) return;
+  }
+
+  const nextIndex = aiProfilesState.profiles.length + 1;
+  const payload = {
+    name: `${t('default_provider_name_prefix')} ${nextIndex}`,
+    provider: 'openai_compatible',
+    api_base: '',
+    api_key: '',
+    model: 'gpt-4o-mini',
+    model_options: ['gpt-4o-mini'],
+    temperature: 0.2,
+    timeout_seconds: 120,
+    set_active: true
+  };
+
+  try {
+    const settings = await api('/api/settings/ai/profiles', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    toast(t('msg_provider_added'));
+    renderSettings(settings, settings?.ai?.active_profile_id || '');
+    await loadOverview();
+  } catch (err) {
+    toast(`${t('msg_error')}: ${err.message}`);
+  }
+}
+
+async function activateAiProfile(profileId) {
+  if (!profileId) return;
+
+  if (isAiProfileDirty()) {
+    const saved = await saveAISettings({ silent: true });
+    if (!saved) return;
+  }
+
+  try {
+    await api(`/api/settings/ai/profiles/${encodeURIComponent(profileId)}/activate`, {
+      method: 'POST'
+    });
+    toast(t('msg_provider_switched'));
+    await loadSettings(profileId);
+    await loadOverview();
+  } catch (err) {
+    toast(`${t('msg_error')}: ${err.message}`);
+  }
+}
+
+async function deleteAiProfile(profileId) {
+  const profile = getAiProfileById(profileId);
+  if (!profile) return;
+  if (!confirm(`${t('msg_confirm_delete_provider')} ${profile.name}?`)) return;
+
+  try {
+    await api(`/api/settings/ai/profiles/${encodeURIComponent(profileId)}`, {
+      method: 'DELETE'
+    });
+    toast(t('msg_deleted'));
+    await loadSettings();
+    await loadOverview();
+  } catch (err) {
     toast(`${t('msg_error')}: ${err.message}`);
   }
 }
@@ -1132,8 +1494,11 @@ async function init() {
   if (btnViewWeekly) btnViewWeekly.addEventListener('click', viewWeeklyReport);
 
   bind('#import-btn', importProblems);
+  bind('#add-ai-provider-btn', addAiProvider);
   bind('#save-ai-btn', saveAISettings);
   bind('#test-ai-btn', testAISettings);
+  bind('#toggle-solution-template-vars-btn', toggleSolutionTemplateVars);
+  bind('#toggle-weekly-template-vars-btn', toggleWeeklyTemplateVars);
   bind('#save-prompts-btn', savePromptSettings);
   bind('#save-ui-settings-btn', saveUiSettings);
 

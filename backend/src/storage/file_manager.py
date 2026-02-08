@@ -18,7 +18,7 @@ from ..models.problem import (
     SolutionStatus,
     TranslationStatus,
 )
-from ..models.settings import AIProvider, AISettings, PromptSettings, SettingsBundle, UiSettings
+from ..models.settings import AIProfile, AIProvider, AISettings, PromptSettings, SettingsBundle, UiSettings
 from ..models.solution import ReportStatusResponse
 from ..models.task import SolutionTaskRecord, TaskStatus
 
@@ -192,23 +192,28 @@ class FileManager:
         return status in {ProblemStatus.unsolved, ProblemStatus.attempted}
 
     def _build_default_settings(self) -> SettingsBundle:
-        provider_raw = os.getenv("AI_PROVIDER", "mock").strip().lower()
-        provider = AIProvider.mock
-        if provider_raw in {"openai", "openai_compatible"}:
-            provider = AIProvider.openai_compatible
-        elif provider_raw in {"anthropic", "claude"}:
+        profile = self._build_default_ai_profile()
+        ai = AISettings(active_profile_id=profile.id, profiles=[profile])
+        return SettingsBundle(ai=ai, prompts=PromptSettings())
+
+    def _build_default_ai_profile(self) -> AIProfile:
+        provider_raw = os.getenv("AI_PROVIDER", "").strip().lower()
+        provider = AIProvider.openai_compatible
+        if provider_raw in {"anthropic", "claude"}:
             provider = AIProvider.anthropic
 
-        ai = AISettings(
+        model = os.getenv("AI_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini"
+        return AIProfile(
+            id="default-1",
+            name="Default",
             provider=provider,
             api_base=os.getenv("AI_API_BASE", "").strip(),
             api_key=os.getenv("AI_API_KEY", "").strip(),
-            model=os.getenv("AI_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini",
-            model_options=[os.getenv("AI_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini"],
+            model=model,
+            model_options=[model],
             temperature=float(os.getenv("AI_TEMPERATURE", "0.2")),
             timeout_seconds=int(os.getenv("AI_TIMEOUT_SECONDS", "120")),
         )
-        return SettingsBundle(ai=ai, prompts=PromptSettings())
 
     def upsert_problems(self, items: list[ProblemInput]) -> tuple[int, int, list[ProblemRecord]]:
         with self._lock:
@@ -855,44 +860,232 @@ class FileManager:
             return None
         return report_path.read_text(encoding="utf-8")
 
+    def _normalize_provider_alias(self, provider_raw: str, default: AIProvider) -> AIProvider:
+        value = (provider_raw or "").strip().lower()
+        if value in {"openai", "openai_compatible"}:
+            return AIProvider.openai_compatible
+        if value in {"anthropic", "claude"}:
+            return AIProvider.anthropic
+        if value == "mock":
+            return default
+        if value == AIProvider.anthropic.value:
+            return AIProvider.anthropic
+        if value == AIProvider.openai_compatible.value:
+            return AIProvider.openai_compatible
+        return default
+
+    def _normalize_model_selection(
+        self,
+        model: str,
+        model_options: list[str] | None,
+        fallback_model: str,
+    ) -> tuple[str, list[str]]:
+        selected = (model or "").strip() or fallback_model
+        options: list[str] = []
+        if isinstance(model_options, list):
+            for raw in model_options:
+                val = str(raw).strip()
+                if val and val not in options:
+                    options.append(val)
+        if not options:
+            options = [selected]
+        if selected not in options:
+            options.append(selected)
+        return selected, options
+
+    def _ensure_unique_profile_id(self, desired_id: str, existing_ids: set[str]) -> str:
+        base = (desired_id or "").strip() or "profile"
+        candidate = base
+        suffix = 2
+        while candidate in existing_ids:
+            candidate = f"{base}-{suffix}"
+            suffix += 1
+        return candidate
+
     def get_settings(self) -> SettingsBundle:
         with self._lock:
             raw = self._read_json(self.settings_file)
+            default = self._build_default_settings()
+            default_profile = default.ai.resolve_active_profile()
+            changed = False
+
+            # Only the new AI profile schema is supported.
             if "ai" in raw and isinstance(raw["ai"], dict):
-                p = str(raw["ai"].get("provider", "")).strip().lower()
-                if p == "openai":
-                    raw["ai"]["provider"] = "openai_compatible"
-                elif p == "claude":
-                    raw["ai"]["provider"] = "anthropic"
+                if not isinstance(raw["ai"].get("profiles"), list):
+                    self._write_json(self.settings_file, default.model_dump(mode="json"))
+                    return default
+
             try:
                 settings = SettingsBundle.model_validate(raw)
             except ValidationError:
-                default = self._build_default_settings()
                 self._write_json(self.settings_file, default.model_dump(mode="json"))
                 return default
 
-            default = self._build_default_settings()
-            changed = False
-            if not settings.ai.api_base and default.ai.api_base:
-                settings.ai.api_base = default.ai.api_base
+            before_count = len(settings.ai.profiles)
+            active = settings.ai.resolve_active_profile()
+            if len(settings.ai.profiles) != before_count:
                 changed = True
-            if not settings.ai.api_key and default.ai.api_key:
-                settings.ai.api_key = default.ai.api_key
+
+            if not active.api_base and default_profile.api_base:
+                active.api_base = default_profile.api_base
                 changed = True
-            if not settings.ai.model_options:
-                settings.ai.model_options = [settings.ai.model] if settings.ai.model else ["gpt-4o-mini"]
+            if not active.api_key and default_profile.api_key:
+                active.api_key = default_profile.api_key
                 changed = True
-            if settings.ai.provider == AIProvider.mock and default.ai.provider != AIProvider.mock:
-                settings.ai.provider = default.ai.provider
+
+            seen_ids: set[str] = set()
+            for idx, profile in enumerate(settings.ai.profiles):
+                normalized_id = self._ensure_unique_profile_id(profile.id, seen_ids)
+                if profile.id != normalized_id:
+                    profile.id = normalized_id
+                    changed = True
+                seen_ids.add(profile.id)
+
+                normalized_name = profile.name.strip() or f"Provider {idx + 1}"
+                if profile.name != normalized_name:
+                    profile.name = normalized_name
+                    changed = True
+
+                normalized_provider = self._normalize_provider_alias(
+                    str(profile.provider),
+                    default_profile.provider,
+                )
+                if profile.provider != normalized_provider:
+                    profile.provider = normalized_provider
+                    changed = True
+
+                normalized_model, normalized_options = self._normalize_model_selection(
+                    profile.model,
+                    profile.model_options,
+                    default_profile.model,
+                )
+                if profile.model != normalized_model:
+                    profile.model = normalized_model
+                    changed = True
+                if profile.model_options != normalized_options:
+                    profile.model_options = normalized_options
+                    changed = True
+
+            if settings.ai.active_profile_id not in seen_ids:
+                settings.ai.active_profile_id = settings.ai.profiles[0].id
                 changed = True
+
             if changed:
                 self._write_json(self.settings_file, settings.model_dump(mode="json"))
             return settings
 
-    def update_ai_settings(self, ai_settings: AISettings) -> SettingsBundle:
+    def get_ai_profile(self, profile_id: str) -> AIProfile | None:
+        current = self.get_settings()
+        for profile in current.ai.profiles:
+            if profile.id == profile_id:
+                return profile
+        return None
+
+    def update_ai_settings(self, ai_settings: AIProfile) -> SettingsBundle:
         with self._lock:
             current = self.get_settings()
-            current.ai = ai_settings
+            active = current.ai.resolve_active_profile()
+            model, options = self._normalize_model_selection(
+                ai_settings.model,
+                ai_settings.model_options,
+                active.model or "gpt-4o-mini",
+            )
+            next_profile = AIProfile(
+                id=active.id,
+                name=active.name,
+                provider=ai_settings.provider,
+                api_base=ai_settings.api_base,
+                api_key=ai_settings.api_key,
+                model=model,
+                model_options=options,
+                temperature=ai_settings.temperature,
+                timeout_seconds=ai_settings.timeout_seconds,
+            )
+
+            replaced = False
+            for idx, profile in enumerate(current.ai.profiles):
+                if profile.id == active.id:
+                    current.ai.profiles[idx] = next_profile
+                    replaced = True
+                    break
+            if not replaced:
+                current.ai.profiles.append(next_profile)
+                current.ai.active_profile_id = next_profile.id
+
+            self._write_json(self.settings_file, current.model_dump(mode="json"))
+            return current
+
+    def add_ai_profile(self, profile: AIProfile, *, set_active: bool = True) -> SettingsBundle:
+        with self._lock:
+            current = self.get_settings()
+            existing_ids = {item.id for item in current.ai.profiles}
+
+            model, options = self._normalize_model_selection(
+                profile.model,
+                profile.model_options,
+                "gpt-4o-mini",
+            )
+            profile.id = self._ensure_unique_profile_id(profile.id, existing_ids)
+            profile.name = profile.name.strip() or f"Provider {len(current.ai.profiles) + 1}"
+            profile.model = model
+            profile.model_options = options
+
+            current.ai.profiles.append(profile)
+            if set_active:
+                current.ai.active_profile_id = profile.id
+            self._write_json(self.settings_file, current.model_dump(mode="json"))
+            return current
+
+    def update_ai_profile(self, profile_id: str, profile: AIProfile) -> SettingsBundle:
+        with self._lock:
+            current = self.get_settings()
+            model, options = self._normalize_model_selection(
+                profile.model,
+                profile.model_options,
+                "gpt-4o-mini",
+            )
+
+            for idx, item in enumerate(current.ai.profiles):
+                if item.id != profile_id:
+                    continue
+                current.ai.profiles[idx] = AIProfile(
+                    id=profile_id,
+                    name=profile.name.strip() or item.name or "Provider",
+                    provider=profile.provider,
+                    api_base=profile.api_base,
+                    api_key=profile.api_key,
+                    model=model,
+                    model_options=options,
+                    temperature=profile.temperature,
+                    timeout_seconds=profile.timeout_seconds,
+                )
+                self._write_json(self.settings_file, current.model_dump(mode="json"))
+                return current
+            raise ValueError("profile not found")
+
+    def activate_ai_profile(self, profile_id: str) -> SettingsBundle:
+        with self._lock:
+            current = self.get_settings()
+            exists = any(profile.id == profile_id for profile in current.ai.profiles)
+            if not exists:
+                raise ValueError("profile not found")
+            current.ai.active_profile_id = profile_id
+            self._write_json(self.settings_file, current.model_dump(mode="json"))
+            return current
+
+    def delete_ai_profile(self, profile_id: str) -> SettingsBundle:
+        with self._lock:
+            current = self.get_settings()
+            if len(current.ai.profiles) <= 1:
+                raise ValueError("at least one profile must remain")
+
+            next_profiles = [profile for profile in current.ai.profiles if profile.id != profile_id]
+            if len(next_profiles) == len(current.ai.profiles):
+                raise ValueError("profile not found")
+
+            current.ai.profiles = next_profiles
+            if current.ai.active_profile_id == profile_id:
+                current.ai.active_profile_id = next_profiles[0].id
             self._write_json(self.settings_file, current.model_dump(mode="json"))
             return current
 
@@ -907,5 +1100,22 @@ class FileManager:
         with self._lock:
             current = self.get_settings()
             current.ui = ui_settings
+            self._write_json(self.settings_file, current.model_dump(mode="json"))
+            return current
+
+    def remove_model_option(self, model_name: str) -> SettingsBundle:
+        with self._lock:
+            current = self.get_settings()
+            profile = current.ai.resolve_active_profile()
+            options = [m for m in profile.model_options if m != model_name]
+            if not options:
+                options = ["gpt-4o-mini"]
+            if profile.model == model_name:
+                profile.model = options[0]
+            profile.model, profile.model_options = self._normalize_model_selection(
+                profile.model,
+                options,
+                "gpt-4o-mini",
+            )
             self._write_json(self.settings_file, current.model_dump(mode="json"))
             return current

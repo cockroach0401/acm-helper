@@ -19,6 +19,8 @@ a = Analysis(
         'uvicorn.protocols.websockets.auto',
         'uvicorn.lifespan',
         'uvicorn.lifespan.on',
+        'pystray._win32',
+        'PIL._tkinter_finder',
         'src',
         'src.main',
         'src.routes',
@@ -55,7 +57,8 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,  # Show console window for logs
+    console=False,  # Hide console window (runs in tray)
+    icon='icon.ico',  # Application icon
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,

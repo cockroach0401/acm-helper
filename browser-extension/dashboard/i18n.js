@@ -1,4 +1,4 @@
-// i18n translations for Dashboard
+﻿// i18n translations for Dashboard
 export const translations = {
     en: {
         // Brand / Nav
@@ -77,6 +77,7 @@ export const translations = {
         btn_delete: 'Delete',
         btn_confirm_delete: 'Confirm Delete',
         msg_confirm_delete: 'Are you sure you want to delete this problem?',
+        msg_confirm_delete_model: 'Are you sure you want to delete model',
         msg_deleted: 'Problem deleted',
         msg_translation_started: 'Translation started',
         status_solved: 'Solved',
@@ -114,7 +115,14 @@ export const translations = {
         // Settings Page
         page_settings: 'Settings',
         section_ai_provider: 'AI Provider',
+        label_provider_profiles: 'Providers',
+        label_provider_name: 'Provider Name',
+        label_active_provider: 'Active',
         btn_test: 'Test',
+        btn_add_provider: 'Add Provider',
+        btn_activate_provider: 'Set Active',
+        btn_edit_provider: 'Edit',
+        btn_delete_provider: 'Delete',
         label_provider: 'Provider',
         label_api_base: 'API Base URL',
         label_api_key: 'API Key',
@@ -141,6 +149,8 @@ export const translations = {
         placeholder_style_injection_rigorous: 'Prompt injection slot for Rigorous style...',
         placeholder_style_injection_intuitive: 'Prompt injection slot for Intuitive style...',
         placeholder_style_injection_concise: 'Prompt injection slot for Concise style...',
+        btn_show_template_vars: 'Show Variables',
+        btn_hide_template_vars: 'Hide Variables',
         btn_save_templates: 'Save Templates',
         btn_save_ui: 'Save Language Settings',
 
@@ -149,6 +159,12 @@ export const translations = {
         msg_connection_success: 'Connection Successful',
         msg_connection_failed: 'Connection Failed',
         msg_ai_saved: 'AI Settings Saved',
+        msg_provider_name_empty: 'Provider name is required',
+        msg_unsaved_ai_changes: 'You have unsaved AI profile changes. Continue and discard them?',
+        msg_provider_added: 'Provider added',
+        msg_provider_switched: 'Provider switched',
+        msg_confirm_delete_provider: 'Are you sure you want to delete provider',
+        default_provider_name_prefix: 'Provider',
         msg_templates_saved: 'Templates Saved',
         msg_ui_saved: 'Language Settings Saved',
         msg_imported: 'Imported',
@@ -247,6 +263,7 @@ export const translations = {
         btn_delete: '删除',
         btn_confirm_delete: '确认删除',
         msg_confirm_delete: '您确定要删除这个题目吗？',
+        msg_confirm_delete_model: '您确定要删除模型',
         msg_deleted: '题目已删除',
         msg_translation_started: '翻译已开始',
         status_solved: '已解决',
