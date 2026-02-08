@@ -232,10 +232,12 @@ class PromptSettingsUpdateRequest(BaseModel):
 
 class UiSettings(BaseModel):
     default_ac_language: AcLanguage = AcLanguage.cpp
+    storage_base_dir: str = ""
 
 
 class UiSettingsUpdateRequest(BaseModel):
-    default_ac_language: AcLanguage
+    default_ac_language: AcLanguage | None = None
+    storage_base_dir: str | None = None
 
 
 class SettingsBundle(BaseModel):

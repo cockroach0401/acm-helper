@@ -10,6 +10,8 @@ let aiProfilesState = {
   selectedProfileId: '',
   profiles: []
 };
+let aiAutoSaveTimer = null;
+let aiSaveQueue = Promise.resolve(true);
 let isSolutionTemplateVarsOpen = false;
 let isWeeklyTemplateVarsOpen = false;
 
@@ -131,6 +133,20 @@ function toast(msg) {
   setTimeout(() => {
     el.style.display = 'none';
   }, 2400);
+}
+
+function extractApiErrorMessage(err) {
+  const raw = String(err?.message || '').trim();
+  if (!raw) return '';
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.detail === 'string' && parsed.detail.trim()) {
+      return parsed.detail.trim();
+    }
+  } catch {
+    // Keep raw message as fallback.
+  }
+  return raw;
 }
 
 function switchView(viewId) {
@@ -591,6 +607,19 @@ function normalizeAiSettings(ai) {
   return { activeProfileId, profiles };
 }
 
+function applyAiSettingsState(ai, preferredProfileId = '') {
+  const normalized = normalizeAiSettings(ai || {});
+  aiProfilesState.activeProfileId = normalized.activeProfileId;
+  aiProfilesState.profiles = normalized.profiles;
+
+  let selectedProfileId = preferredProfileId || aiProfilesState.selectedProfileId || normalized.activeProfileId;
+  if (!aiProfilesState.profiles.some(profile => profile.id === selectedProfileId)) {
+    selectedProfileId = normalized.activeProfileId || aiProfilesState.profiles[0]?.id || '';
+  }
+  aiProfilesState.selectedProfileId = selectedProfileId;
+  return selectedProfileId;
+}
+
 function getAiProfileById(profileId) {
   return aiProfilesState.profiles.find(profile => profile.id === profileId) || null;
 }
@@ -628,6 +657,7 @@ function renderModelOptions(options, selectedModel) {
       }
       $('#ai-model-options').value = nextOptions.join('\n');
       renderModelOptions(nextOptions, modelInput?.value?.trim() || nextOptions[0]);
+      scheduleAiAutoSave();
     });
   });
 }
@@ -705,10 +735,41 @@ function fillAiProfileForm(profile) {
   renderModelOptions(profile.model_options || [profile.model || 'gpt-4o-mini'], profile.model);
 }
 
+function scheduleAiAutoSave(delay = 500) {
+  if (aiAutoSaveTimer) {
+    clearTimeout(aiAutoSaveTimer);
+  }
+  aiAutoSaveTimer = setTimeout(() => {
+    aiAutoSaveTimer = null;
+    saveAISettings({ silent: true, refresh: false, onlyIfDirty: true, suppressValidationToast: true }).catch(() => { });
+  }, delay);
+}
+
+function bindAiAutoSaveHandlers() {
+  const selectors = [
+    '#ai-provider-name',
+    '#ai-provider',
+    '#ai-api-base',
+    '#ai-api-key',
+    '#ai-model',
+    '#ai-temperature',
+    '#ai-timeout'
+  ];
+
+  const onProfileEdit = () => scheduleAiAutoSave();
+  selectors.forEach((selector) => {
+    const el = $(selector);
+    if (!el) return;
+    el.addEventListener('input', onProfileEdit);
+    el.addEventListener('change', onProfileEdit);
+    el.addEventListener('blur', onProfileEdit);
+  });
+}
+
 async function selectAiProfile(profileId) {
   if (!profileId || profileId === aiProfilesState.selectedProfileId) return;
   if (isAiProfileDirty(aiProfilesState.selectedProfileId)) {
-    const saved = await saveAISettings({ silent: true });
+    const saved = await saveAISettings({ silent: true, refresh: false });
     if (!saved) return;
   }
   aiProfilesState.selectedProfileId = profileId;
@@ -764,16 +825,7 @@ function renderAiProfileCards() {
 }
 
 function renderAiSettings(ai, preferredProfileId = '') {
-  const normalized = normalizeAiSettings(ai || {});
-  aiProfilesState.activeProfileId = normalized.activeProfileId;
-  aiProfilesState.profiles = normalized.profiles;
-
-  let selectedProfileId = preferredProfileId || aiProfilesState.selectedProfileId || normalized.activeProfileId;
-  if (!aiProfilesState.profiles.some(profile => profile.id === selectedProfileId)) {
-    selectedProfileId = normalized.activeProfileId || aiProfilesState.profiles[0]?.id || '';
-  }
-
-  aiProfilesState.selectedProfileId = selectedProfileId;
+  const selectedProfileId = applyAiSettingsState(ai, preferredProfileId);
   fillAiProfileForm(getAiProfileById(selectedProfileId));
   renderAiProfileCards();
 }
@@ -824,6 +876,13 @@ function renderSettings(settings, preferredProfileId = '') {
 
   const acLangEl = $('#ac-language');
   if (acLangEl) acLangEl.value = defaultAcLanguage;
+
+  const storageBaseDir = (ui.storage_base_dir || '').trim();
+  const storageBaseDirEl = $('#storage-base-dir');
+  if (storageBaseDirEl) {
+    storageBaseDirEl.value = storageBaseDir;
+    storageBaseDirEl.dataset.currentPath = storageBaseDir;
+  }
 }
 
 function renderTemplateVarsVisibility() {
@@ -877,22 +936,62 @@ async function loadSettings(preferredProfileId = '') {
   renderSettings(settings, preferredProfileId);
 }
 
-async function saveAISettings({ silent = false } = {}) {
-  const profile = getAiProfileById(aiProfilesState.selectedProfileId);
+function saveAISettings(options = {}) {
+  aiSaveQueue = aiSaveQueue
+    .catch(() => true)
+    .then(() => saveAISettingsNow(options));
+  return aiSaveQueue;
+}
+
+async function saveAISettingsNow({ silent = false, refresh = true, onlyIfDirty = false, suppressValidationToast = false } = {}) {
+  if (aiAutoSaveTimer) {
+    clearTimeout(aiAutoSaveTimer);
+    aiAutoSaveTimer = null;
+  }
+
+  const profileId = aiProfilesState.selectedProfileId;
+  const profile = getAiProfileById(profileId);
   if (!profile) return false;
+
   const payload = readAiProfileForm();
   if (!payload.name) {
-    toast(t('msg_provider_name_empty'));
+    if (!suppressValidationToast) toast(t('msg_provider_name_empty'));
     return false;
   }
+
+  if (onlyIfDirty) {
+    const baseline = normalizeAiPayloadForCompare(profile);
+    const current = normalizeAiPayloadForCompare(payload);
+    if (JSON.stringify(current) === JSON.stringify(baseline)) {
+      return true;
+    }
+  }
+
   try {
-    await api(`/api/settings/ai/profiles/${encodeURIComponent(profile.id)}`, {
+    const settings = await api(`/api/settings/ai/profiles/${encodeURIComponent(profileId)}`, {
       method: 'PUT',
       body: JSON.stringify(payload)
     });
+
+    if (settings?.ai) {
+      const selectedProfileId = applyAiSettingsState(settings.ai, profileId);
+      if (refresh) fillAiProfileForm(getAiProfileById(selectedProfileId));
+      renderAiProfileCards();
+    } else {
+      const index = aiProfilesState.profiles.findIndex(item => item.id === profileId);
+      if (index >= 0) {
+        aiProfilesState.profiles[index] = normalizeAiProfile(
+          { ...aiProfilesState.profiles[index], ...payload, id: profileId },
+          profileId,
+          payload.name || aiProfilesState.profiles[index].name || `Provider ${index + 1}`
+        );
+        if (refresh) fillAiProfileForm(getAiProfileById(profileId));
+        renderAiProfileCards();
+      }
+    }
+
     if (!silent) toast(t('msg_ai_saved'));
-    await loadSettings(profile.id);
-    await loadOverview();
+    if (refresh) await loadOverview();
     return true;
   } catch (err) {
     toast(`${t('msg_error')}: ${err.message}`);
@@ -922,7 +1021,7 @@ async function testAISettings() {
 
 async function addAiProvider() {
   if (isAiProfileDirty()) {
-    const saved = await saveAISettings({ silent: true });
+    const saved = await saveAISettings({ silent: true, refresh: false });
     if (!saved) return;
   }
 
@@ -945,7 +1044,11 @@ async function addAiProvider() {
       body: JSON.stringify(payload)
     });
     toast(t('msg_provider_added'));
-    renderSettings(settings, settings?.ai?.active_profile_id || '');
+    if (settings?.ai) {
+      renderAiSettings(settings.ai, settings.ai.active_profile_id || '');
+    } else {
+      await loadSettings();
+    }
     await loadOverview();
   } catch (err) {
     toast(`${t('msg_error')}: ${err.message}`);
@@ -956,16 +1059,20 @@ async function activateAiProfile(profileId) {
   if (!profileId) return;
 
   if (isAiProfileDirty()) {
-    const saved = await saveAISettings({ silent: true });
+    const saved = await saveAISettings({ silent: true, refresh: false });
     if (!saved) return;
   }
 
   try {
-    await api(`/api/settings/ai/profiles/${encodeURIComponent(profileId)}/activate`, {
+    const settings = await api(`/api/settings/ai/profiles/${encodeURIComponent(profileId)}/activate`, {
       method: 'POST'
     });
     toast(t('msg_provider_switched'));
-    await loadSettings(profileId);
+    if (settings?.ai) {
+      renderAiSettings(settings.ai, profileId);
+    } else {
+      await loadSettings(profileId);
+    }
     await loadOverview();
   } catch (err) {
     toast(`${t('msg_error')}: ${err.message}`);
@@ -978,11 +1085,15 @@ async function deleteAiProfile(profileId) {
   if (!confirm(`${t('msg_confirm_delete_provider')} ${profile.name}?`)) return;
 
   try {
-    await api(`/api/settings/ai/profiles/${encodeURIComponent(profileId)}`, {
+    const settings = await api(`/api/settings/ai/profiles/${encodeURIComponent(profileId)}`, {
       method: 'DELETE'
     });
     toast(t('msg_deleted'));
-    await loadSettings();
+    if (settings?.ai) {
+      renderAiSettings(settings.ai, settings.ai.active_profile_id || '');
+    } else {
+      await loadSettings();
+    }
     await loadOverview();
   } catch (err) {
     toast(`${t('msg_error')}: ${err.message}`);
@@ -1013,8 +1124,11 @@ async function savePromptSettings() {
 }
 
 async function saveUiSettings() {
+  const storageBaseDirEl = $('#storage-base-dir');
+  const previousStoragePath = (storageBaseDirEl?.dataset.currentPath || '').trim();
   const payload = {
-    default_ac_language: $('#default-ac-language').value
+    default_ac_language: $('#default-ac-language').value,
+    storage_base_dir: (storageBaseDirEl?.value || '').trim()
   };
 
   try {
@@ -1026,9 +1140,40 @@ async function saveUiSettings() {
     const acLangEl = $('#ac-language');
     if (acLangEl) acLangEl.value = lang;
 
-    toast(t('msg_ui_saved'));
+    const savedStoragePath = (data?.ui?.storage_base_dir || payload.storage_base_dir || '').trim();
+    if (storageBaseDirEl) {
+      storageBaseDirEl.value = savedStoragePath;
+      storageBaseDirEl.dataset.currentPath = savedStoragePath;
+    }
+
+    if (previousStoragePath && savedStoragePath && previousStoragePath !== savedStoragePath) {
+      toast(t('msg_storage_path_saved'));
+    } else {
+      toast(t('msg_ui_saved'));
+    }
   } catch (err) {
-    toast(`${t('msg_error')}: ${err.message}`);
+    const detail = extractApiErrorMessage(err);
+    if (detail.includes('queued or running')) {
+      toast(t('msg_storage_path_switch_blocked_running'));
+      return;
+    }
+    toast(`${t('msg_error')}: ${detail || err.message}`);
+  }
+}
+
+async function pickStorageDirectory() {
+  try {
+    const data = await api('/api/settings/storage/pick-directory', { method: 'POST' });
+    if (!data?.selected) return;
+
+    const path = String(data.path || '').trim();
+    if (!path) return;
+    const storageBaseDirEl = $('#storage-base-dir');
+    if (storageBaseDirEl) storageBaseDirEl.value = path;
+    toast(t('msg_storage_path_picked'));
+  } catch (err) {
+    const detail = extractApiErrorMessage(err);
+    toast(`${t('msg_error')}: ${detail || err.message}`);
   }
 }
 
@@ -1495,12 +1640,13 @@ async function init() {
 
   bind('#import-btn', importProblems);
   bind('#add-ai-provider-btn', addAiProvider);
-  bind('#save-ai-btn', saveAISettings);
   bind('#test-ai-btn', testAISettings);
   bind('#toggle-solution-template-vars-btn', toggleSolutionTemplateVars);
   bind('#toggle-weekly-template-vars-btn', toggleWeeklyTemplateVars);
   bind('#save-prompts-btn', savePromptSettings);
   bind('#save-ui-settings-btn', saveUiSettings);
+  bind('#pick-storage-dir-btn', pickStorageDirectory);
+  bindAiAutoSaveHandlers();
 
   // Metadata Save
   bind('#save-ac-btn', saveMetadata);

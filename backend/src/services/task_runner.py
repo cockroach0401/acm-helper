@@ -47,7 +47,7 @@ class TaskRunner:
                     default_ac_language=settings.ui.default_ac_language.value,
                     prompt_settings=settings.prompts,
                 )
-                output_path = self.fm.save_solution_file(problem.source, problem.id, content)
+                output_path = self.fm.save_solution_file(problem, content)
                 self.fm.update_task(
                     task_id,
                     status=TaskStatus.succeeded,

@@ -366,9 +366,6 @@
               </div>
             </div>
           </div>
-          <div class="row-actions">
-            <button id="save-ai-btn" class="btn" data-i18n="btn_save_ai">Save AI Settings</button>
-          </div>
           <pre id="ai-test-result" class="hidden" style="margin-top:1rem;"></pre>
         </div>
 
@@ -430,6 +427,16 @@
             </select>
             <div class="helper-note" data-i18n="hint_default_language_variable">This value is injected as
               {{default_ac_language}} in solution prompt templates.</div>
+          </div>
+          <div class="form-group">
+            <label data-i18n="label_storage_path">Storage Path</label>
+            <div style="display:flex; gap:0.5rem;">
+              <input id="storage-base-dir" type="text" readonly />
+              <button id="pick-storage-dir-btn" class="btn btn-secondary" type="button"
+                data-i18n="btn_pick_storage_path">Pick</button>
+            </div>
+            <div class="helper-note" data-i18n="hint_storage_path_migrate">Switching storage path migrates all
+              local data files.</div>
           </div>
           <div class="row-actions">
             <button id="save-prompts-btn" class="btn" data-i18n="btn_save_templates">Save Templates</button>

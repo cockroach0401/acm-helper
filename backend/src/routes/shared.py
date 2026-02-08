@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from ..services.ai_client import AIClient
@@ -9,7 +10,51 @@ from ..services.task_runner import TaskRunner
 from ..services.translator import ProblemTranslator
 from ..storage.file_manager import FileManager
 
-_BASE_DIR = Path(__file__).resolve().parents[2] / "data"
+_APP_DIR = Path(__file__).resolve().parents[2]
+_DEFAULT_BASE_DIR = _APP_DIR / "data"
+_STORAGE_CONFIG_FILE = _APP_DIR / "storage_config.json"
+
+
+def resolve_storage_base_dir(path_raw: str | None) -> Path:
+    value = (path_raw or "").strip()
+    if not value:
+        return _DEFAULT_BASE_DIR.resolve()
+    return Path(value).expanduser().resolve()
+
+
+def _load_storage_base_dir() -> Path:
+    if not _STORAGE_CONFIG_FILE.exists():
+        return _DEFAULT_BASE_DIR.resolve()
+
+    try:
+        raw = _STORAGE_CONFIG_FILE.read_text(encoding="utf-8")
+        obj = json.loads(raw)
+    except (OSError, json.JSONDecodeError):
+        return _DEFAULT_BASE_DIR.resolve()
+
+    if not isinstance(obj, dict):
+        return _DEFAULT_BASE_DIR.resolve()
+    try:
+        return resolve_storage_base_dir(str(obj.get("storage_base_dir", "")))
+    except (OSError, RuntimeError, ValueError):
+        return _DEFAULT_BASE_DIR.resolve()
+
+
+def persist_storage_base_dir(path: Path) -> Path:
+    normalized = resolve_storage_base_dir(str(path))
+    payload = {"storage_base_dir": str(normalized)}
+    _STORAGE_CONFIG_FILE.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return normalized
+
+
+_BASE_DIR = _load_storage_base_dir()
+try:
+    persist_storage_base_dir(_BASE_DIR)
+except OSError:
+    pass
 
 _file_manager = FileManager(_BASE_DIR)
 _ai_client = AIClient()

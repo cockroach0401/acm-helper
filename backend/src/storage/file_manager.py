@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import threading
 import uuid
 from datetime import datetime, UTC
@@ -40,18 +41,102 @@ def problem_key(source: str, problem_id: str) -> str:
 
 
 class FileManager:
+    _PROBLEM_MD_REF_MARKER = "<!-- problem-md-ref -->"
+
     def __init__(self, base_dir: Path):
-        self.base = base_dir
+        self._lock = threading.RLock()
+        self._set_base_paths(base_dir)
+        self._ensure_storage_files()
+
+    def _set_base_paths(self, base_dir: Path) -> None:
+        self.base = Path(base_dir).expanduser().resolve()
         self.base.mkdir(parents=True, exist_ok=True)
         self.problems_file = self.base / "problems.json"
         self.tasks_file = self.base / "tasks.json"
         self.reports_file = self.base / "reports.json"
         self.settings_file = self.base / "settings.json"
-        self._lock = threading.RLock()
+
+    def _ensure_storage_files(self) -> None:
         self._ensure_json_file(self.problems_file, {})
         self._ensure_json_file(self.tasks_file, {})
         self._ensure_json_file(self.reports_file, {})
         self._ensure_json_file(self.settings_file, self._build_default_settings().model_dump(mode="json"))
+
+    def get_storage_base_dir(self) -> str:
+        return str(self.base.resolve())
+
+    def set_base_dir(self, base_dir: Path) -> None:
+        with self._lock:
+            self._set_base_paths(base_dir)
+            self._ensure_storage_files()
+
+    def _build_renamed_migration_path(self, target_dir: Path, source_name: str) -> Path:
+        source_path = Path(source_name)
+        if source_path.suffix:
+            stem = source_path.stem
+            suffix = source_path.suffix
+        else:
+            stem = source_path.name
+            suffix = ""
+
+        stamp = now_utc().strftime("%Y%m%d_%H%M%S")
+        candidate = target_dir / f"{stem}__migrated_{stamp}{suffix}"
+        idx = 2
+        while candidate.exists():
+            candidate = target_dir / f"{stem}__migrated_{stamp}_{idx}{suffix}"
+            idx += 1
+        return candidate
+
+    def switch_storage_base(self, new_base_dir: Path, *, conflict_mode: str = "rename") -> dict:
+        if conflict_mode != "rename":
+            raise ValueError("unsupported conflict mode")
+
+        with self._lock:
+            old_base = self.base.resolve()
+            target_base = Path(new_base_dir).expanduser().resolve()
+
+            if target_base == old_base:
+                return {
+                    "changed": False,
+                    "source": str(old_base),
+                    "target": str(target_base),
+                    "moved_entries": 0,
+                    "renamed_entries": 0,
+                }
+
+            if old_base in target_base.parents:
+                raise ValueError("target storage directory cannot be inside current storage directory")
+
+            if target_base.exists() and not target_base.is_dir():
+                raise ValueError("target storage path exists and is not a directory")
+
+            target_base.mkdir(parents=True, exist_ok=True)
+
+            moved_entries = 0
+            renamed_entries = 0
+            for entry in sorted(old_base.iterdir(), key=lambda p: p.name):
+                destination = target_base / entry.name
+                if destination.exists():
+                    destination = self._build_renamed_migration_path(target_base, entry.name)
+                    renamed_entries += 1
+                shutil.move(str(entry), str(destination))
+                moved_entries += 1
+
+            self._set_base_paths(target_base)
+            self._ensure_storage_files()
+
+            try:
+                old_base.rmdir()
+            except OSError:
+                pass
+
+            return {
+                "changed": True,
+                "source": str(old_base),
+                "target": str(target_base),
+                "moved_entries": moved_entries,
+                "renamed_entries": renamed_entries,
+            }
 
     def _problem_md_path(self, record: ProblemRecord) -> Path:
         month = month_from_dt(record.created_at)
@@ -66,6 +151,25 @@ class FileManager:
     def _iter_solution_markdown_paths(self, source: str, problem_id: str) -> list[Path]:
         filename = f"{source}_{problem_id}.md"
         return sorted(self.base.glob(f"*/solutions/{filename}"))
+
+    def _build_solution_markdown(self, record: ProblemRecord, content: str, solution_path: Path) -> str:
+        body = (content or "").rstrip("\n")
+
+        problem_md_path = self._problem_md_path(record)
+        if not problem_md_path.exists():
+            problem_md_path.write_text(self._build_problem_markdown(record), encoding="utf-8")
+
+        rel_problem_path = os.path.relpath(problem_md_path, start=solution_path.parent).replace("\\", "/")
+        header = "\n".join(
+            [
+                "## Problem Markdown Reference",
+                f"- [Open original problem markdown]({rel_problem_path})",
+                self._PROBLEM_MD_REF_MARKER,
+            ]
+        )
+        if body:
+            return f"{header}\n\n{body}\n"
+        return f"{header}\n"
 
     def _build_problem_markdown(self, record: ProblemRecord) -> str:
         tags = ", ".join(record.tags) if record.tags else ""
@@ -194,7 +298,8 @@ class FileManager:
     def _build_default_settings(self) -> SettingsBundle:
         profile = self._build_default_ai_profile()
         ai = AISettings(active_profile_id=profile.id, profiles=[profile])
-        return SettingsBundle(ai=ai, prompts=PromptSettings())
+        ui = UiSettings(storage_base_dir=self.get_storage_base_dir())
+        return SettingsBundle(ai=ai, prompts=PromptSettings(), ui=ui)
 
     def _build_default_ai_profile(self) -> AIProfile:
         provider_raw = os.getenv("AI_PROVIDER", "").strip().lower()
@@ -743,6 +848,18 @@ class FileManager:
             records.sort(key=lambda x: x.created_at, reverse=True)
             return records
 
+    def has_active_solution_tasks(self) -> bool:
+        with self._lock:
+            tasks = self._read_json(self.tasks_file)
+            for raw in tasks.values():
+                try:
+                    record = SolutionTaskRecord.model_validate(raw)
+                except ValidationError:
+                    continue
+                if record.status in {TaskStatus.queued, TaskStatus.running}:
+                    return True
+            return False
+
     def update_task(
         self,
         task_id: str,
@@ -778,12 +895,13 @@ class FileManager:
             self._write_json(self.tasks_file, tasks)
             return record
 
-    def save_solution_file(self, source: str, problem_id: str, content: str) -> str:
+    def save_solution_file(self, problem: ProblemRecord, content: str) -> str:
         month = current_month()
         solution_dir = self.base / month / "solutions"
         solution_dir.mkdir(parents=True, exist_ok=True)
-        path = solution_dir / f"{source}_{problem_id}.md"
-        path.write_text(content, encoding="utf-8")
+        path = solution_dir / f"{problem.source}_{problem.id}.md"
+        final_content = self._build_solution_markdown(problem, content, path)
+        path.write_text(final_content, encoding="utf-8")
         return str(path)
 
     def list_solution_files(self, month: str | None = None) -> list[str]:
@@ -931,6 +1049,11 @@ class FileManager:
                 changed = True
             if not active.api_key and default_profile.api_key:
                 active.api_key = default_profile.api_key
+                changed = True
+
+            normalized_storage_base = self.get_storage_base_dir()
+            if settings.ui.storage_base_dir != normalized_storage_base:
+                settings.ui.storage_base_dir = normalized_storage_base
                 changed = True
 
             seen_ids: set[str] = set()
@@ -1099,7 +1222,10 @@ class FileManager:
     def update_ui_settings(self, ui_settings: UiSettings) -> SettingsBundle:
         with self._lock:
             current = self.get_settings()
-            current.ui = ui_settings
+            current.ui = UiSettings(
+                default_ac_language=ui_settings.default_ac_language,
+                storage_base_dir=(ui_settings.storage_base_dir or "").strip() or self.get_storage_base_dir(),
+            )
             self._write_json(self.settings_file, current.model_dump(mode="json"))
             return current
 

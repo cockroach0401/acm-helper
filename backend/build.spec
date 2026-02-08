@@ -19,6 +19,8 @@ a = Analysis(
         'uvicorn.protocols.websockets.auto',
         'uvicorn.lifespan',
         'uvicorn.lifespan.on',
+        'tkinter',
+        'tkinter.filedialog',
         'pystray._win32',
         'PIL._tkinter_finder',
         'src',

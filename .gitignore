@@ -26,4 +26,4 @@ build/
 # Runtime generated backend data (keep repo release clean)
 backend/data/**
 !backend/data/.gitkeep
-
+backend/storage_config.json
