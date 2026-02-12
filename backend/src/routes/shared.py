@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 from ..services.ai_client import AIClient
@@ -10,7 +11,20 @@ from ..services.task_runner import TaskRunner
 from ..services.translator import ProblemTranslator
 from ..storage.file_manager import FileManager
 
-_APP_DIR = Path(__file__).resolve().parents[2]
+
+def _get_app_dir() -> Path:
+    """Return the application root directory.
+
+    In PyInstaller frozen mode, ``__file__`` resolves to a temporary
+    ``_MEI*`` directory that is deleted on exit. Use the directory
+    containing the executable instead so that config files persist.
+    """
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parents[2]
+
+
+_APP_DIR = _get_app_dir()
 _DEFAULT_BASE_DIR = _APP_DIR / "data"
 _STORAGE_CONFIG_FILE = _APP_DIR / "storage_config.json"
 
@@ -28,10 +42,10 @@ def resolve_storage_base_dir(path_raw: str | None) -> Path:
 
 def _load_storage_base_dir() -> Path:
     if not _STORAGE_CONFIG_FILE.exists():
-        # Fallback to default if not configured, but ideally we wait for user input.
-        # However, to avoid crashing before setup, we can default to something safe.
-        # Since we added `is_storage_configured` check in API, the frontend should force setup.
-        # But for the FileManager initialization, we need a valid path.
+        # Not yet configured — return a temporary default so the
+        # FileManager can initialise.  The frontend will detect
+        # ``is_storage_configured() == False`` and force the user
+        # to pick a real directory before any data is written.
         return _DEFAULT_BASE_DIR.resolve()
 
     try:
@@ -59,10 +73,13 @@ def persist_storage_base_dir(path: Path) -> Path:
 
 
 _BASE_DIR = _load_storage_base_dir()
-try:
-    persist_storage_base_dir(_BASE_DIR)
-except OSError:
-    pass
+# Only persist on startup when already configured — otherwise the
+# frontend setup overlay will handle persisting the user's choice.
+if is_storage_configured():
+    try:
+        persist_storage_base_dir(_BASE_DIR)
+    except OSError:
+        pass
 
 _file_manager = FileManager(_BASE_DIR)
 _ai_client = AIClient()

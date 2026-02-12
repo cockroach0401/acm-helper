@@ -98,43 +98,6 @@ function showSetupOverlay() {
   const btn = $('#setup-pick-dir-btn');
   const errorBox = $('#setup-error');
 
-  overlay.classList.remove('hidden');
-
-  btn.addEventListener('click', async () => {
-    btn.disabled = true;
-    errorBox.classList.add('hidden');
-    
-    try {
-      // 1. Ask backend to open folder picker
-      const { selected, path } = await api('/api/settings/storage/pick-directory', { method: 'POST' });
-      
-      if (!selected || !path) {
-        btn.disabled = false;
-        return; // User cancelled
-      }
-
-      // 2. Set the directory
-      await api('/api/settings/ui', {
-        method: 'PUT',
-        body: JSON.stringify({ storage_base_dir: path })
-      });
-
-      // 3. Success -> Reload to initialize everything properly
-      window.location.reload();
-      
-    } catch (err) {
-      errorBox.textContent = extractApiErrorMessage(err) || t('msg_error_unknown');
-      errorBox.classList.remove('hidden');
-      btn.disabled = false;
-    }
-  });
-}
-
-function showSetupOverlay() {
-  const overlay = $('#setup-overlay');
-  const btn = $('#setup-pick-dir-btn');
-  const errorBox = $('#setup-error');
-
   if (!overlay || !btn) return;
 
   overlay.classList.remove('hidden');
@@ -2036,6 +1999,17 @@ async function init() {
   const rangeSelector = $('#heatmap-mode');
   if (rangeSelector) {
     rangeSelector.addEventListener('change', () => loadStatsCharts());
+  }
+
+  // Check if storage directory has been configured
+  try {
+    const status = await api('/api/settings/status');
+    if (!status.is_configured) {
+      showSetupOverlay();
+      return; // Don't load anything else until user picks a directory
+    }
+  } catch (err) {
+    console.error('Failed to check storage status:', err);
   }
 
   await loadSettings();
