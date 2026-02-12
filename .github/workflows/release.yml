@@ -36,26 +36,6 @@ jobs:
           pyinstaller build.spec
           Copy-Item -Path "icon.ico" -Destination "dist/icon.ico" -Force
 
-      - name: Prepare code signing certificate (optional)
-        if: ${{ secrets.WINDOWS_PFX_BASE64 != '' && secrets.WINDOWS_PFX_PASSWORD != '' }}
-        shell: powershell
-        run: |
-          $certPath = Join-Path $env:RUNNER_TEMP 'codesign.pfx'
-          [System.IO.File]::WriteAllBytes($certPath, [System.Convert]::FromBase64String("${{ secrets.WINDOWS_PFX_BASE64 }}"))
-          "SIGN_CERT_PATH=$certPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Sign backend EXE (optional)
-        if: ${{ env.SIGN_CERT_PATH != '' }}
-        shell: powershell
-        run: |
-          $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe' |
-            Sort-Object FullName -Descending |
-            Select-Object -First 1 -ExpandProperty FullName
-          if (-not $signtool) {
-            throw 'signtool.exe not found'
-          }
-          & $signtool sign /fd SHA256 /f "$env:SIGN_CERT_PATH" /p "${{ secrets.WINDOWS_PFX_PASSWORD }}" /tr "http://timestamp.digicert.com" /td SHA256 "backend\dist\ACMHelper.exe"
-
       - name: Install Inno Setup
         shell: powershell
         run: |
@@ -69,22 +49,6 @@ jobs:
             throw "ISCC not found: $compiler"
           }
           & $compiler "backend\installer\ACMHelper.iss"
-
-      - name: Sign installer EXE (optional)
-        if: ${{ env.SIGN_CERT_PATH != '' }}
-        shell: powershell
-        run: |
-          $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe' |
-            Sort-Object FullName -Descending |
-            Select-Object -First 1 -ExpandProperty FullName
-          if (-not $signtool) {
-            throw 'signtool.exe not found'
-          }
-          $installer = Get-ChildItem 'backend\dist\ACMHelper-Setup-*.exe' | Select-Object -First 1 -ExpandProperty FullName
-          if (-not $installer) {
-            throw 'installer exe not found'
-          }
-          & $signtool sign /fd SHA256 /f "$env:SIGN_CERT_PATH" /p "${{ secrets.WINDOWS_PFX_PASSWORD }}" /tr "http://timestamp.digicert.com" /td SHA256 "$installer"
 
       - name: Package portable backend zip
         shell: powershell
@@ -137,5 +101,3 @@ jobs:
             ACMHelper-Portable/ACMHelper-Portable.zip
             ACMHelper-Extension/acm-helper-extension.zip
           generate_release_notes: true
-
-
