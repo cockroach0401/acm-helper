@@ -45,7 +45,7 @@
    - Edge: `edge://extensions`
 2. 开启右上角的 **"开发者模式" (Developer mode)**。
 3. 点击 **"加载已解压的扩展程序" (Load unpacked)**。
-4. 选择本项目中的 `browser-extension` 文件夹。
+4. 解压并选择选择本项目中的 `acm-helper-extension.zip` 文件夹。
 5. 安装完成后，建议将 **ACM Helper** 插件固定到浏览器工具栏。
 
 ---
