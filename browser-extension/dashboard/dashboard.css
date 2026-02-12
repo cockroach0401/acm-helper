@@ -469,6 +469,86 @@ pre {
   border-color: var(--border-hover);
 }
 
+/* --- Solution Images --- */
+.solution-images-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.solution-image-item {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: var(--bg-app);
+}
+
+.solution-image-item .img-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.solution-image-item img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: cover;
+}
+
+.btn-delete-image {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.btn-delete-image:hover {
+  background: rgba(220, 53, 69, 0.9);
+}
+
+.image-upload-area {
+  border: 2px dashed var(--border-color);
+  border-radius: 6px;
+  padding: 1rem;
+  background: var(--bg-app);
+  transition: all 0.2s;
+  outline: none;
+}
+
+.image-upload-area.drag-over {
+  border-color: var(--accent-primary);
+  background: rgba(var(--accent-primary-rgb), 0.05);
+}
+
+.image-upload-area:focus {
+  border-color: var(--accent-primary);
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
 /* --- Charts --- */
 .heatmap-container,
 .chart-bar-container {
@@ -525,6 +605,56 @@ text {
   margin-top: 0.5rem;
   color: var(--text-muted);
   font-size: 0.8rem;
+}
+
+/* --- Setup Overlay --- */
+.setup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(5px);
+}
+
+.setup-modal {
+  background: var(--bg-card);
+  padding: 2.5rem;
+  border-radius: var(--radius-lg);
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-color);
+}
+
+.setup-modal h2 {
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.setup-modal p {
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.setup-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.error-text {
+  color: var(--accent-danger);
+  margin-top: 1rem;
+  font-size: 0.9rem;
 }
 
 .hidden {

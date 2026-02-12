@@ -60,6 +60,7 @@ class SolutionGenerator:
         ai_settings: AISettings,
         default_ac_language: str = "",
         prompt_settings: PromptSettings | None = None,
+        images_base64: list[str] | None = None,
     ) -> str:
         prompt = build_solution_prompt(
             problem,
@@ -67,4 +68,4 @@ class SolutionGenerator:
             default_ac_language=default_ac_language,
             prompt_settings=prompt_settings,
         )
-        return await self.ai_client.generate_solution(prompt, ai_settings)
+        return await self.ai_client.generate_solution(prompt, ai_settings, images_base64=images_base64)

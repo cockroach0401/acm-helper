@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 
 from ..models.problem import (
     ProblemAcCodeUpdateRequest,
@@ -15,6 +15,7 @@ from ..models.problem import (
     ProblemStatus,
     ProblemRecord,
     ProblemTranslateRequest,
+    SolutionImageMeta,
     TranslationStatus,
 )
 from ..services.translator import ProblemTranslator
@@ -196,6 +197,48 @@ def update_problem_reflection(
     if record is None:
         raise HTTPException(status_code=404, detail="Problem not found")
     return record
+
+
+@router.post("/{source}/{problem_id}/solution-images", response_model=SolutionImageMeta)
+async def upload_solution_image(
+    source: str,
+    problem_id: str,
+    file: UploadFile = File(...),
+    fm: FileManager = Depends(get_file_manager),
+) -> SolutionImageMeta:
+    try:
+        content = await file.read()
+        return fm.save_solution_image(
+            source,
+            problem_id,
+            filename=file.filename or "unknown",
+            content=content,
+            mime_type=file.content_type or "application/octet-stream",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/{source}/{problem_id}/solution-images", response_model=list[SolutionImageMeta])
+def list_solution_images(
+    source: str,
+    problem_id: str,
+    fm: FileManager = Depends(get_file_manager),
+) -> list[SolutionImageMeta]:
+    return fm.list_solution_images(source, problem_id)
+
+
+@router.delete("/{source}/{problem_id}/solution-images/{image_id}")
+def delete_solution_image(
+    source: str,
+    problem_id: str,
+    image_id: str,
+    fm: FileManager = Depends(get_file_manager),
+):
+    success = fm.delete_solution_image(source, problem_id, image_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return {"ok": True}
 
 
 @router.put("/{source}/{problem_id}/difficulty", response_model=ProblemRecord)

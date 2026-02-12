@@ -93,6 +93,84 @@ function toggleLanguage() {
   loadSettings(aiProfilesState.selectedProfileId).catch(() => { });
 }
 
+function showSetupOverlay() {
+  const overlay = $('#setup-overlay');
+  const btn = $('#setup-pick-dir-btn');
+  const errorBox = $('#setup-error');
+
+  overlay.classList.remove('hidden');
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    errorBox.classList.add('hidden');
+    
+    try {
+      // 1. Ask backend to open folder picker
+      const { selected, path } = await api('/api/settings/storage/pick-directory', { method: 'POST' });
+      
+      if (!selected || !path) {
+        btn.disabled = false;
+        return; // User cancelled
+      }
+
+      // 2. Set the directory
+      await api('/api/settings/ui', {
+        method: 'PUT',
+        body: JSON.stringify({ storage_base_dir: path })
+      });
+
+      // 3. Success -> Reload to initialize everything properly
+      window.location.reload();
+      
+    } catch (err) {
+      errorBox.textContent = extractApiErrorMessage(err) || t('msg_error_unknown');
+      errorBox.classList.remove('hidden');
+      btn.disabled = false;
+    }
+  });
+}
+
+function showSetupOverlay() {
+  const overlay = $('#setup-overlay');
+  const btn = $('#setup-pick-dir-btn');
+  const errorBox = $('#setup-error');
+
+  if (!overlay || !btn) return;
+
+  overlay.classList.remove('hidden');
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    if (errorBox) errorBox.classList.add('hidden');
+    
+    try {
+      // 1. Ask backend to open folder picker
+      const { selected, path } = await api('/api/settings/storage/pick-directory', { method: 'POST' });
+      
+      if (!selected || !path) {
+        btn.disabled = false;
+        return; // User cancelled
+      }
+
+      // 2. Set the directory
+      await api('/api/settings/ui', {
+        method: 'PUT',
+        body: JSON.stringify({ storage_base_dir: path })
+      });
+
+      // 3. Success -> Reload to initialize everything properly
+      window.location.reload();
+      
+    } catch (err) {
+      if (errorBox) {
+        errorBox.textContent = extractApiErrorMessage(err) || t('msg_error_unknown');
+        errorBox.classList.remove('hidden');
+      }
+      btn.disabled = false;
+    }
+  });
+}
+
 // --- Theme ---
 
 function getTheme() {
@@ -417,6 +495,25 @@ async function renderInlineForm(container, source, id) {
             </div>
             <div class="form-group">
                 <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                    <label style="font-size:0.8rem">${t('label_solution_images')}</label>
+                    <span style="font-size:0.7rem; color:var(--text-muted);">${t('hint_solution_images')}</span>
+                </div>
+                <div class="solution-images-container" id="images-container-${safeKey}">
+                    <!-- Images will be rendered here -->
+                    <div class="loading-placeholder" style="font-size:0.8rem;">Loading images...</div>
+                </div>
+                <div class="image-upload-area" id="upload-area-${safeKey}">
+                    <div class="upload-placeholder">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted); margin-bottom:0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        <div style="font-size:0.8rem; color:var(--text-muted); text-align:center;">${t('drag_drop_images')}</div>
+                        <button class="btn btn-sm btn-secondary" style="margin-top:0.5rem;" id="btn-select-images-${safeKey}">${t('btn_upload_image')}</button>
+                        <input type="file" id="file-input-${safeKey}" multiple accept="image/png, image/jpeg, image/gif, image/webp" style="display:none;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
                     <label style="font-size:0.8rem">${t('label_code')}</label>
                     <select id="edit-lang-${safeKey}" style="font-size:0.8rem; padding:2px;">${langOptions}</select>
                 </div>
@@ -436,6 +533,9 @@ async function renderInlineForm(container, source, id) {
     container.querySelector('.save-edit-btn').addEventListener('click', () => {
       saveInlineDetails(source, id, safeKey);
     });
+
+    // Initialize Image Upload Logic
+    initImageUpload(source, id, safeKey);
 
   } catch (err) {
     container.innerHTML = `<div style="color:var(--accent-danger)">Error: ${err.message}</div>`;
@@ -544,6 +644,142 @@ async function generateSolution(key) {
     });
   } catch (err) {
     toast(`${t('msg_task_failed')}: ${err.message}`);
+  }
+}
+
+// --- Image Upload Logic ---
+
+async function initImageUpload(source, id, safeKey) {
+  const container = $(`#images-container-${safeKey}`);
+  const uploadArea = $(`#upload-area-${safeKey}`);
+  const fileInput = $(`#file-input-${safeKey}`);
+  const selectBtn = $(`#btn-select-images-${safeKey}`);
+
+  // Load existing images
+  await loadImages(source, id, container);
+
+  // File Select
+  selectBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => handleFiles(e.target.files, source, id, container));
+
+  // Drag & Drop
+  uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('drag-over');
+  });
+  uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('drag-over');
+  });
+  uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('drag-over');
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFiles(e.dataTransfer.files, source, id, container);
+    }
+  });
+
+  // Paste from clipboard
+  // Make focusable to catch paste events
+  uploadArea.setAttribute('tabindex', '0');
+  uploadArea.addEventListener('paste', (e) => {
+    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+    const files = [];
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        files.push(items[i].getAsFile());
+      }
+    }
+    if (files.length > 0) {
+      e.preventDefault();
+      handleFiles(files, source, id, container);
+    }
+  });
+}
+
+async function loadImages(source, id, container) {
+  try {
+    const images = await api(`/api/problems/${encodeURIComponent(source)}/${encodeURIComponent(id)}/solution-images`);
+    renderImages(images, source, id, container);
+  } catch (err) {
+    container.innerHTML = `<div style="color:var(--accent-danger)">Load failed: ${err.message}</div>`;
+  }
+}
+
+function renderImages(images, source, id, container) {
+  if (!images || images.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  // Get API base for static URL construction
+  // In extensions, we usually store this or default to localhost:8000
+  // Since we are inside the dashboard which loads api.js, let's just peek at local storage directly or assume standard behavior.
+  // The backend returns a relative path like 'backend/data/...'.
+  // Our static mount point is /static/solution-images/
+  // But wait, the FileManager implementation of 'relative_path' is relative to workspace root?
+  // Let's check backend implementation: relative_path = file_path.relative_to(self.base).as_posix()
+  // And base is usually backend/data (or whatever UI settings say).
+  // The static route: @app.get("/static/solution-images/{relative_path:path}")
+  // So if we pass the same relative path, it should resolve.
+  // We need the API base URL.
+
+  chrome.storage.local.get('acm_helper_api_base', (res) => {
+      const apiBase = res.acm_helper_api_base || 'http://localhost:8000';
+      
+      container.innerHTML = images.map(img => {
+          const src = `${apiBase}/static/solution-images/${img.relative_path}`;
+          return `
+            <div class="solution-image-item" title="${img.filename}">
+                <div class="img-wrapper">
+                    <img src="${src}" alt="${img.filename}">
+                </div>
+                <button class="btn-delete-image" data-id="${img.id}">&times;</button>
+            </div>
+          `;
+      }).join('');
+
+      // Bind delete events
+      container.querySelectorAll('.btn-delete-image').forEach(btn => {
+          btn.addEventListener('click', () => deleteImage(source, id, btn.dataset.id, container));
+      });
+  });
+}
+
+async function handleFiles(files, source, id, container) {
+  if (!files || files.length === 0) return;
+
+  toast(t('msg_uploading_image'));
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      await api(`/api/problems/${encodeURIComponent(source)}/${encodeURIComponent(id)}/solution-images`, {
+        method: 'POST',
+        body: formData
+      });
+      toast(t('msg_image_uploaded'));
+    } catch (err) {
+      toast(`${t('msg_image_upload_failed')}: ${err.message}`);
+    }
+  }
+
+  // Reload
+  await loadImages(source, id, container);
+}
+
+async function deleteImage(source, id, imageId, container) {
+  if (!confirm(t('msg_confirm_delete') || 'Delete?')) return;
+  try {
+      await api(`/api/problems/${encodeURIComponent(source)}/${encodeURIComponent(id)}/solution-images/${imageId}`, {
+          method: 'DELETE'
+      });
+      toast(t('msg_image_deleted'));
+      await loadImages(source, id, container);
+  } catch (err) {
+      toast(`${t('msg_image_delete_failed')}: ${err.message}`);
   }
 }
 

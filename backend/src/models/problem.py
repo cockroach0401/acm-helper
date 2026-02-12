@@ -6,6 +6,16 @@ from enum import Enum
 from pydantic import BaseModel, Field, field_validator
 
 
+class SolutionImageMeta(BaseModel):
+    """Metadata for a solution image attached to a problem."""
+    id: str
+    filename: str
+    mime_type: str
+    size_bytes: int
+    relative_path: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
 class ProblemStatus(str, Enum):
     solved = "solved"
     attempted = "attempted"
@@ -77,6 +87,7 @@ class ProblemInput(BaseModel):
 
 
 class ProblemRecord(ProblemInput):
+    solution_images: list[SolutionImageMeta] = Field(default_factory=list)
     needs_solution: bool = True
     solution_status: SolutionStatus = SolutionStatus.none
     solution_updated_at: datetime | None = None

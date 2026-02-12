@@ -9,6 +9,17 @@
 
 <body>
 
+  <div id="setup-overlay" class="setup-overlay hidden">
+    <div class="setup-modal">
+      <h2 data-i18n="setup_title">Welcome to ACM Helper</h2>
+      <p data-i18n="setup_desc">Please select a folder to store your data (problems, solutions, settings).</p>
+      <div class="setup-actions">
+        <button id="setup-pick-dir-btn" class="btn btn-primary" data-i18n="setup_pick_dir">Select Storage Directory</button>
+      </div>
+      <div id="setup-error" class="error-text hidden"></div>
+    </div>
+  </div>
+
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="brand">

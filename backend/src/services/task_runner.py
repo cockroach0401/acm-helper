@@ -39,6 +39,14 @@ class TaskRunner:
                 return
 
             try:
+                # Load solution images if any
+                images_base64: list[str] = []
+                for img_meta in problem.solution_images:
+                    if img_meta.relative_path:
+                        b64 = self.fm.read_solution_image_base64(img_meta.relative_path)
+                        if b64:
+                            images_base64.append(b64)
+
                 settings = self.fm.get_settings()
                 content = await self.solution_generator.generate(
                     problem,
@@ -46,6 +54,7 @@ class TaskRunner:
                     ai_settings=settings.ai,
                     default_ac_language=settings.ui.default_ac_language.value,
                     prompt_settings=settings.prompts,
+                    images_base64=images_base64,
                 )
                 output_path = self.fm.save_solution_file(problem, content)
                 self.fm.update_task(

@@ -23,7 +23,13 @@ from ..models.settings import (
 from ..services.ai_client import AIClient
 from ..services.autostart import get_autostart_state, set_autostart
 from ..storage.file_manager import FileManager
-from .shared import get_ai_client, get_file_manager, persist_storage_base_dir, resolve_storage_base_dir
+from .shared import (
+    get_ai_client,
+    get_file_manager,
+    is_storage_configured,
+    persist_storage_base_dir,
+    resolve_storage_base_dir,
+)
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -140,6 +146,14 @@ def _sync_ui_autostart_state(fm: FileManager):
         autostart_silent=state.silent,
     )
     return fm.update_ui_settings(ui)
+
+
+@router.get("/status")
+def get_settings_status(fm: FileManager = Depends(get_file_manager)):
+    return {
+        "is_configured": is_storage_configured(),
+        "storage_base_dir": fm.get_storage_base_dir(),
+    }
 
 
 @router.get("")

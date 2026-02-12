@@ -15,6 +15,10 @@ _DEFAULT_BASE_DIR = _APP_DIR / "data"
 _STORAGE_CONFIG_FILE = _APP_DIR / "storage_config.json"
 
 
+def is_storage_configured() -> bool:
+    return _STORAGE_CONFIG_FILE.exists()
+
+
 def resolve_storage_base_dir(path_raw: str | None) -> Path:
     value = (path_raw or "").strip()
     if not value:
@@ -24,6 +28,10 @@ def resolve_storage_base_dir(path_raw: str | None) -> Path:
 
 def _load_storage_base_dir() -> Path:
     if not _STORAGE_CONFIG_FILE.exists():
+        # Fallback to default if not configured, but ideally we wait for user input.
+        # However, to avoid crashing before setup, we can default to something safe.
+        # Since we added `is_storage_configured` check in API, the frontend should force setup.
+        # But for the FileManager initialization, we need a valid path.
         return _DEFAULT_BASE_DIR.resolve()
 
     try:

@@ -11,11 +11,14 @@ export async function setApiBase(v) {
 
 export async function api(path, options = {}) {
   const base = await getApiBase();
+  const headers = { ...options.headers };
+
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const resp = await fetch(`${base}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    },
+    headers,
     ...options
   });
 
