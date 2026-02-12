@@ -206,7 +206,14 @@ export const translations = {
         msg_error: 'Error',
         msg_starting_generation: 'Starting generation for',
         msg_task_failed: 'Task failed',
-        msg_select_week: 'Please select a week.'
+        msg_select_week: 'Please select a week.',
+
+        // Setup Overlay
+        setup_title: 'Welcome to ACM Helper',
+        setup_desc: 'Please select a folder to store your data (problems, solutions, settings).',
+        setup_pick_dir: 'Select Storage Directory',
+        setup_use_default: 'Use Default Directory',
+        msg_error_unknown: 'Unknown error'
     },
 
     zh: {
@@ -415,7 +422,14 @@ export const translations = {
         msg_error: '错误',
         msg_starting_generation: '开始生成',
         msg_task_failed: '任务失败',
-        msg_select_week: '请选择一周。'
+        msg_select_week: '请选择一周。',
+
+        // Setup Overlay
+        setup_title: '欢迎使用 ACM 助手',
+        setup_desc: '请选择一个文件夹来存储您的数据（题目、题解、设置）。',
+        setup_pick_dir: '选择存储目录',
+        setup_use_default: '使用默认目录(安装目录)',
+        msg_error_unknown: '未知错误'
     }
 };
 

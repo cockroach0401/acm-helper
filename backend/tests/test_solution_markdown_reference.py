@@ -48,9 +48,9 @@ class SolutionMarkdownReferenceTests(unittest.TestCase):
         solution_path = Path(self.fm.save_solution_file(problem, "# Solution\n\nBody"))
         text = solution_path.read_text(encoding="utf-8")
 
-        self.assertIn("## Problem Markdown Reference", text)
-        self.assertIn("<!-- problem-md-ref -->", text)
-        self.assertIn(
+        self.assertNotIn("## Problem Markdown Reference", text)
+        self.assertNotIn("<!-- problem-md-ref -->", text)
+        self.assertNotIn(
             "- [Open original problem markdown](../problems/codeforces_1A.md)",
             text,
         )
@@ -69,7 +69,7 @@ class SolutionMarkdownReferenceTests(unittest.TestCase):
 
         problem_path = self.base / month_from_dt(old_created_at) / "problems" / "codeforces_2B.md"
         expected = os.path.relpath(problem_path, start=solution_path.parent).replace("\\", "/")
-        self.assertIn(f"- [Open original problem markdown]({expected})", text)
+        self.assertNotIn(f"- [Open original problem markdown]({expected})", text)
 
     def test_preserves_utf8_content(self) -> None:
         problem = self._make_problem(

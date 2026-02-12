@@ -43,7 +43,6 @@ def problem_key(source: str, problem_id: str) -> str:
 
 
 class FileManager:
-    _PROBLEM_MD_REF_MARKER = "<!-- problem-md-ref -->"
     _ALLOWED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
     _MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024  # 5MB
     _MAX_IMAGES_PER_PROBLEM = 10
@@ -164,17 +163,7 @@ class FileManager:
         if not problem_md_path.exists():
             problem_md_path.write_text(self._build_problem_markdown(record), encoding="utf-8")
 
-        rel_problem_path = os.path.relpath(problem_md_path, start=solution_path.parent).replace("\\", "/")
-        header = "\n".join(
-            [
-                "## Problem Markdown Reference(原题)",
-                f"- [Open original problem markdown(打开原题)]({rel_problem_path})",
-                self._PROBLEM_MD_REF_MARKER,
-            ]
-        )
-        if body:
-            return f"{header}\n\n{body}\n"
-        return f"{header}\n"
+        return f"{body}\n" if body else ""
 
     def _build_problem_markdown(self, record: ProblemRecord) -> str:
         tags = ", ".join(record.tags) if record.tags else ""

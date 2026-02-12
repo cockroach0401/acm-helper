@@ -95,25 +95,41 @@ function toggleLanguage() {
 
 function showSetupOverlay() {
   const overlay = $('#setup-overlay');
-  const btn = $('#setup-pick-dir-btn');
+  const pickBtn = $('#setup-pick-dir-btn');
+  const defaultBtn = $('#setup-use-default-btn');
   const errorBox = $('#setup-error');
 
-  if (!overlay || !btn) return;
+  if (!overlay || !pickBtn || !defaultBtn) {
+    console.error('Setup overlay or buttons not found in DOM');
+    return;
+  }
 
+  console.log('Showing setup overlay');
   overlay.classList.remove('hidden');
 
-  btn.addEventListener('click', async () => {
-    btn.disabled = true;
+  // Remove old listeners to avoid duplication
+  pickBtn.replaceWith(pickBtn.cloneNode(true));
+  defaultBtn.replaceWith(defaultBtn.cloneNode(true));
+  const newPickBtn = $('#setup-pick-dir-btn');
+  const newDefaultBtn = $('#setup-use-default-btn');
+
+  // Handle "Pick Directory" button
+  newPickBtn.addEventListener('click', async () => {
+    newPickBtn.disabled = true;
     if (errorBox) errorBox.classList.add('hidden');
-    
+
     try {
+      console.log('User clicked pick directory button');
       // 1. Ask backend to open folder picker
       const { selected, path } = await api('/api/settings/storage/pick-directory', { method: 'POST' });
-      
+
       if (!selected || !path) {
-        btn.disabled = false;
-        return; // User cancelled
+        console.log('User cancelled directory picker');
+        newPickBtn.disabled = false;
+        return;
       }
+
+      console.log(`User selected directory: ${path}`);
 
       // 2. Set the directory
       await api('/api/settings/ui', {
@@ -121,15 +137,54 @@ function showSetupOverlay() {
         body: JSON.stringify({ storage_base_dir: path })
       });
 
+      console.log('Directory saved, reloading page');
       // 3. Success -> Reload to initialize everything properly
       window.location.reload();
-      
+
     } catch (err) {
+      console.error('Error during setup:', err);
       if (errorBox) {
         errorBox.textContent = extractApiErrorMessage(err) || t('msg_error_unknown');
         errorBox.classList.remove('hidden');
       }
-      btn.disabled = false;
+      newPickBtn.disabled = false;
+    }
+  });
+
+  // Handle "Use Default Directory" button
+  newDefaultBtn.addEventListener('click', async () => {
+    newDefaultBtn.disabled = true;
+    if (errorBox) errorBox.classList.add('hidden');
+
+    try {
+      console.log('User clicked use default directory button');
+
+      // Get the default directory from backend status
+      const status = await api('/api/settings/status');
+      const defaultPath = status.storage_base_dir;
+
+      if (!defaultPath) {
+        throw new Error('Failed to get default directory path');
+      }
+
+      console.log(`Using default directory: ${defaultPath}`);
+
+      // Set the default directory
+      await api('/api/settings/ui', {
+        method: 'PUT',
+        body: JSON.stringify({ storage_base_dir: defaultPath })
+      });
+
+      console.log('Default directory saved, reloading page');
+      window.location.reload();
+
+    } catch (err) {
+      console.error('Error using default directory:', err);
+      if (errorBox) {
+        errorBox.textContent = extractApiErrorMessage(err) || t('msg_error_unknown');
+        errorBox.classList.remove('hidden');
+      }
+      newDefaultBtn.disabled = false;
     }
   });
 }
@@ -1924,6 +1979,24 @@ async function init() {
   applyTranslations();
   initTheme();
 
+  // Check if storage directory has been configured FIRST
+  try {
+    console.log('Checking storage configuration status...');
+    const status = await api('/api/settings/status');
+    console.log('Storage status:', status);
+
+    if (!status.is_configured) {
+      console.log('Storage not configured, showing setup overlay');
+      showSetupOverlay();
+      return; // Don't load anything else until user picks a directory
+    }
+    console.log('Storage configured, proceeding with normal init');
+  } catch (err) {
+    console.error('Failed to check storage status:', err);
+    // Continue anyway in case of error
+  }
+
+  // Rest of init only runs if storage is configured
   const month = await getCurrentMonth();
   const monthInput = $('#month');
   if (monthInput) {
@@ -1999,17 +2072,6 @@ async function init() {
   const rangeSelector = $('#heatmap-mode');
   if (rangeSelector) {
     rangeSelector.addEventListener('change', () => loadStatsCharts());
-  }
-
-  // Check if storage directory has been configured
-  try {
-    const status = await api('/api/settings/status');
-    if (!status.is_configured) {
-      showSetupOverlay();
-      return; // Don't load anything else until user picks a directory
-    }
-  } catch (err) {
-    console.error('Failed to check storage status:', err);
   }
 
   await loadSettings();
