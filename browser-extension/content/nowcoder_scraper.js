@@ -121,6 +121,7 @@
         source: 'nowcoder',
         id: sourceId,
         title: title || 'Untitled',
+        url,
         content,
         input_format: inputFormat,
         output_format: outputFormat,

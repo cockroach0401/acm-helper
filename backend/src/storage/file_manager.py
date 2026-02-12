@@ -162,8 +162,8 @@ class FileManager:
         rel_problem_path = os.path.relpath(problem_md_path, start=solution_path.parent).replace("\\", "/")
         header = "\n".join(
             [
-                "## Problem Markdown Reference",
-                f"- [Open original problem markdown]({rel_problem_path})",
+                "## Problem Markdown Reference(原题)",
+                f"- [Open original problem markdown(打开原题)]({rel_problem_path})",
                 self._PROBLEM_MD_REF_MARKER,
             ]
         )
@@ -179,6 +179,7 @@ class FileManager:
             f"- source: {record.source}",
             f"- id: {record.id}",
             f"- title: {record.title}",
+            f"- original_url: {record.url}",
             f"- status: {record.status.value}",
             f"- needs_solution: {str(record.needs_solution).lower()}",
             f"- solution_status: {record.solution_status.value}",
@@ -368,15 +369,18 @@ class FileManager:
                     payload.pop("my_ac_code", None)
                     payload.pop("my_ac_language", None)
                     payload.pop("reflection", None)
+                    incoming_url = str(payload.pop("url", "") or "").strip()
                     keep_code = existing.my_ac_code if not item.my_ac_code.strip() else item.my_ac_code
                     keep_language = existing.my_ac_language if not item.my_ac_language.strip() else item.my_ac_language
                     keep_language = self._normalize_ac_language(keep_language, default_language=default_lang)
                     keep_reflection = existing.reflection if not item.reflection.strip() else item.reflection
+                    keep_url = existing.url if not incoming_url else incoming_url
                     record = ProblemRecord(
                         **payload,
                         my_ac_code=keep_code,
                         my_ac_language=keep_language,
                         reflection=keep_reflection,
+                        url=keep_url,
                         needs_solution=default_needs_solution and not has_done_solution,
                         solution_status=current_solution_status,
                         solution_updated_at=existing.solution_updated_at,
@@ -1225,6 +1229,8 @@ class FileManager:
             current.ui = UiSettings(
                 default_ac_language=ui_settings.default_ac_language,
                 storage_base_dir=(ui_settings.storage_base_dir or "").strip() or self.get_storage_base_dir(),
+                autostart_enabled=ui_settings.autostart_enabled,
+                autostart_silent=ui_settings.autostart_silent,
             )
             self._write_json(self.settings_file, current.model_dump(mode="json"))
             return current
@@ -1245,3 +1251,4 @@ class FileManager:
             )
             self._write_json(self.settings_file, current.model_dump(mode="json"))
             return current
+

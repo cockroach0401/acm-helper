@@ -21,6 +21,7 @@ from ..models.settings import (
     WeeklyPromptStyle,
 )
 from ..services.ai_client import AIClient
+from ..services.autostart import get_autostart_state, set_autostart
 from ..storage.file_manager import FileManager
 from .shared import get_ai_client, get_file_manager, persist_storage_base_dir, resolve_storage_base_dir
 
@@ -125,9 +126,25 @@ def _pick_directory_from_system_dialog(initial_dir: str) -> tuple[bool, str]:
     return True, str(Path(selected).expanduser().resolve())
 
 
+def _sync_ui_autostart_state(fm: FileManager):
+    settings = fm.get_settings()
+    state = get_autostart_state()
+
+    if settings.ui.autostart_enabled == state.enabled and settings.ui.autostart_silent == state.silent:
+        return settings
+
+    ui = UiSettings(
+        default_ac_language=settings.ui.default_ac_language,
+        storage_base_dir=settings.ui.storage_base_dir,
+        autostart_enabled=state.enabled,
+        autostart_silent=state.silent,
+    )
+    return fm.update_ui_settings(ui)
+
+
 @router.get("")
 def get_settings(fm: FileManager = Depends(get_file_manager)):
-    return fm.get_settings().model_dump(mode="json")
+    return _sync_ui_autostart_state(fm).model_dump(mode="json")
 
 
 @router.get("/ai/profiles")
@@ -331,6 +348,8 @@ def update_ui_settings(
 
     next_default_language = req.default_ac_language or current.ui.default_ac_language
     next_storage_base = fm.get_storage_base_dir()
+    next_autostart_enabled = current.ui.autostart_enabled
+    next_autostart_silent = current.ui.autostart_silent
 
     if req.storage_base_dir is not None:
         try:
@@ -358,9 +377,27 @@ def update_ui_settings(
 
         next_storage_base = str(resolved_target)
 
+    if req.autostart_enabled is not None or req.autostart_silent is not None:
+        target_enabled = req.autostart_enabled if req.autostart_enabled is not None else current.ui.autostart_enabled
+        target_silent = req.autostart_silent if req.autostart_silent is not None else current.ui.autostart_silent
+
+        try:
+            applied = set_autostart(enabled=target_enabled, silent=target_silent)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+        next_autostart_enabled = applied.enabled
+        next_autostart_silent = applied.silent
+    else:
+        live_state = get_autostart_state()
+        next_autostart_enabled = live_state.enabled
+        next_autostart_silent = live_state.silent
+
     ui = UiSettings(
         default_ac_language=next_default_language,
         storage_base_dir=next_storage_base,
+        autostart_enabled=next_autostart_enabled,
+        autostart_silent=next_autostart_silent,
     )
     settings = fm.update_ui_settings(ui)
     return settings.model_dump(mode="json")
@@ -373,3 +410,6 @@ def delete_model_option(
 ):
     settings = fm.remove_model_option(model_name)
     return settings.model_dump(mode="json")
+
+
+

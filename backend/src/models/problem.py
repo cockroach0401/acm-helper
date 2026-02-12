@@ -35,6 +35,7 @@ class ProblemInput(BaseModel):
     source: str = Field(min_length=1)
     id: str = Field(min_length=1)
     title: str = Field(min_length=1)
+    url: str = ""
     content: str = ""
     input_format: str = ""
     output_format: str = ""

@@ -392,6 +392,16 @@ tr:last-child td {
   color: var(--accent-warning);
 }
 
+.problem-link {
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.problem-link:hover {
+  color: var(--accent-primary);
+  text-decoration: underline;
+}
+
 /* --- Toast --- */
 #toast {
   position: fixed;

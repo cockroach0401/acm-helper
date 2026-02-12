@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from enum import Enum
 
@@ -233,14 +233,19 @@ class PromptSettingsUpdateRequest(BaseModel):
 class UiSettings(BaseModel):
     default_ac_language: AcLanguage = AcLanguage.cpp
     storage_base_dir: str = ""
+    autostart_enabled: bool = False
+    autostart_silent: bool = True
 
 
 class UiSettingsUpdateRequest(BaseModel):
     default_ac_language: AcLanguage | None = None
     storage_base_dir: str | None = None
+    autostart_enabled: bool | None = None
+    autostart_silent: bool | None = None
 
 
 class SettingsBundle(BaseModel):
     ai: AISettings = Field(default_factory=AISettings)
     prompts: PromptSettings = Field(default_factory=PromptSettings)
     ui: UiSettings = Field(default_factory=UiSettings)
+

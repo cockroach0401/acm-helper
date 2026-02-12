@@ -173,6 +173,7 @@
               <option value="" data-i18n="status_all">All</option>
               <option value="codeforces">Codeforces</option>
               <option value="nowcoder">Nowcoder</option>
+              <option value="luogu">Luogu</option>
             </select>
           </div>
         </div>
@@ -210,6 +211,10 @@
           <div class="form-group" style="margin-bottom:0;">
             <label data-i18n="label_import_title">Title</label>
             <input id="import-title" type="text" data-i18n-placeholder="placeholder_import_title" placeholder="Demo" />
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label data-i18n="label_import_url">URL</label>
+            <input id="import-url" type="text" data-i18n-placeholder="placeholder_import_url" placeholder="https://..." />
           </div>
           <div class="form-group" style="margin-bottom:0;">
             <label data-i18n="label_import_status">Status</label>
@@ -267,8 +272,14 @@
         <div id="charts-container" style="display: flex; flex-direction: column; gap: 2rem;">
           <!-- Chart 1: Activity Heatmap -->
           <div>
-            <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);"
-              data-i18n="chart_activity">Activity</h3>
+            <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <h3 style="font-size: 0.9rem; margin-bottom: 0; color: var(--text-secondary);"
+                data-i18n="chart_activity">Activity</h3>
+              <select id="heatmap-mode" style="font-size: 0.7rem; padding: 0.1rem 0.3rem; width: auto; max-width: 5rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
+                <option value="year" data-i18n="heatmap_mode_year">Year</option>
+                <option value="365" data-i18n="heatmap_mode_365">365d</option>
+              </select>
+            </div>
             <div id="chart-activity-heatmap" class="heatmap-container">
               <!-- JS Injected SVG -->
               <div style="text-align:center; padding: 2rem; color: var(--text-muted);">Loading Activity...</div>

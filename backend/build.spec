@@ -34,6 +34,7 @@ a = Analysis(
         'src.routes.stats',
         'src.models',
         'src.services',
+        'src.services.autostart',
         'src.storage',
     ],
     hookspath=[],
@@ -66,3 +67,4 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
+

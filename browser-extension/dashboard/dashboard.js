@@ -12,6 +12,8 @@ let aiProfilesState = {
 };
 let aiAutoSaveTimer = null;
 let aiSaveQueue = Promise.resolve(true);
+let aiSaveInProgress = false;
+let aiAutoSaveSuppressed = false;
 let isSolutionTemplateVarsOpen = false;
 let isWeeklyTemplateVarsOpen = false;
 
@@ -306,11 +308,17 @@ function renderProblemList(items) {
 
     const diffBadge = p.difficulty ? `<span style="font-size:0.7rem; background:var(--bg-input); padding:2px 4px; border-radius:4px; margin-left:4px;">${p.difficulty}</span>` : '';
 
+    const safeTitle = escapeHtml(p.title || '');
+    const safeUrl = escapeHtml(p.url || '');
+    const titleHtml = safeUrl
+      ? `<a class="problem-link" href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeTitle || '-'}</a>`
+      : (safeTitle || '-');
+
     return `
       <tr class="problem-row">
          <td>
             <div style="font-weight:600; color:var(--text-primary); display:flex; align-items:center;">
-                ${p.title} ${diffBadge}
+                ${titleHtml} ${diffBadge}
             </div>
             <div style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);">${p.id}</div>
          </td>
@@ -719,28 +727,36 @@ function isAiProfileDirty(profileId = aiProfilesState.selectedProfileId) {
 
 function fillAiProfileForm(profile) {
   if (!profile) return;
-  $('#ai-provider-name').value = profile.name || '';
+  const wasSuppressed = aiAutoSaveSuppressed;
+  aiAutoSaveSuppressed = true;
+  try {
+    $('#ai-provider-name').value = profile.name || '';
 
-  const providerSelect = $('#ai-provider');
-  const provider = profile.provider || 'openai_compatible';
-  const exists = Array.from(providerSelect.options).some(opt => opt.value === provider);
-  providerSelect.value = exists ? provider : 'openai_compatible';
+    const providerSelect = $('#ai-provider');
+    const provider = profile.provider || 'openai_compatible';
+    const exists = Array.from(providerSelect.options).some(opt => opt.value === provider);
+    providerSelect.value = exists ? provider : 'openai_compatible';
 
-  $('#ai-api-base').value = profile.api_base || '';
-  $('#ai-api-key').value = profile.api_key || '';
-  $('#ai-model').value = profile.model || profile.model_options[0] || 'gpt-4o-mini';
-  $('#ai-model-options').value = (profile.model_options || []).join('\n');
-  $('#ai-temperature').value = profile.temperature ?? 0.2;
-  $('#ai-timeout').value = profile.timeout_seconds ?? 120;
-  renderModelOptions(profile.model_options || [profile.model || 'gpt-4o-mini'], profile.model);
+    $('#ai-api-base').value = profile.api_base || '';
+    $('#ai-api-key').value = profile.api_key || '';
+    $('#ai-model').value = profile.model || profile.model_options[0] || 'gpt-4o-mini';
+    $('#ai-model-options').value = (profile.model_options || []).join('\n');
+    $('#ai-temperature').value = profile.temperature ?? 0.2;
+    $('#ai-timeout').value = profile.timeout_seconds ?? 120;
+    renderModelOptions(profile.model_options || [profile.model || 'gpt-4o-mini'], profile.model);
+  } finally {
+    aiAutoSaveSuppressed = wasSuppressed;
+  }
 }
 
-function scheduleAiAutoSave(delay = 500) {
+function scheduleAiAutoSave(delay = 800) {
+  if (aiAutoSaveSuppressed || aiSaveInProgress) return;
   if (aiAutoSaveTimer) {
     clearTimeout(aiAutoSaveTimer);
   }
   aiAutoSaveTimer = setTimeout(() => {
     aiAutoSaveTimer = null;
+    if (aiSaveInProgress || aiAutoSaveSuppressed) return;
     saveAISettings({ silent: true, refresh: false, onlyIfDirty: true, suppressValidationToast: true }).catch(() => { });
   }, delay);
 }
@@ -762,7 +778,6 @@ function bindAiAutoSaveHandlers() {
     if (!el) return;
     el.addEventListener('input', onProfileEdit);
     el.addEventListener('change', onProfileEdit);
-    el.addEventListener('blur', onProfileEdit);
   });
 }
 
@@ -937,6 +952,9 @@ async function loadSettings(preferredProfileId = '') {
 }
 
 function saveAISettings(options = {}) {
+  if (aiSaveInProgress && options.onlyIfDirty) {
+    return Promise.resolve(true);
+  }
   aiSaveQueue = aiSaveQueue
     .catch(() => true)
     .then(() => saveAISettingsNow(options));
@@ -944,58 +962,113 @@ function saveAISettings(options = {}) {
 }
 
 async function saveAISettingsNow({ silent = false, refresh = true, onlyIfDirty = false, suppressValidationToast = false } = {}) {
-  if (aiAutoSaveTimer) {
-    clearTimeout(aiAutoSaveTimer);
-    aiAutoSaveTimer = null;
+  if (aiSaveInProgress) {
+    return onlyIfDirty ? true : false;
   }
-
-  const profileId = aiProfilesState.selectedProfileId;
-  const profile = getAiProfileById(profileId);
-  if (!profile) return false;
-
-  const payload = readAiProfileForm();
-  if (!payload.name) {
-    if (!suppressValidationToast) toast(t('msg_provider_name_empty'));
-    return false;
-  }
-
-  if (onlyIfDirty) {
-    const baseline = normalizeAiPayloadForCompare(profile);
-    const current = normalizeAiPayloadForCompare(payload);
-    if (JSON.stringify(current) === JSON.stringify(baseline)) {
-      return true;
-    }
-  }
+  aiSaveInProgress = true;
 
   try {
-    const settings = await api(`/api/settings/ai/profiles/${encodeURIComponent(profileId)}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload)
-    });
+    if (aiAutoSaveTimer) {
+      clearTimeout(aiAutoSaveTimer);
+      aiAutoSaveTimer = null;
+    }
 
-    if (settings?.ai) {
-      const selectedProfileId = applyAiSettingsState(settings.ai, profileId);
-      if (refresh) fillAiProfileForm(getAiProfileById(selectedProfileId));
-      renderAiProfileCards();
-    } else {
-      const index = aiProfilesState.profiles.findIndex(item => item.id === profileId);
-      if (index >= 0) {
-        aiProfilesState.profiles[index] = normalizeAiProfile(
-          { ...aiProfilesState.profiles[index], ...payload, id: profileId },
-          profileId,
-          payload.name || aiProfilesState.profiles[index].name || `Provider ${index + 1}`
-        );
-        if (refresh) fillAiProfileForm(getAiProfileById(profileId));
-        renderAiProfileCards();
+    let profileId = aiProfilesState.selectedProfileId;
+    let profile = getAiProfileById(profileId);
+    if (!profile && aiProfilesState.profiles.length > 0) {
+      profile = aiProfilesState.profiles[0];
+      profileId = profile.id;
+      aiProfilesState.selectedProfileId = profileId;
+    }
+    if (!profile || !profileId) return false;
+
+    const payload = readAiProfileForm();
+    if (!payload.name) {
+      if (!suppressValidationToast) toast(t('msg_provider_name_empty'));
+      return false;
+    }
+
+    if (onlyIfDirty) {
+      const baseline = normalizeAiPayloadForCompare(profile);
+      const current = normalizeAiPayloadForCompare(payload);
+      if (JSON.stringify(current) === JSON.stringify(baseline)) {
+        return true;
       }
     }
 
-    if (!silent) toast(t('msg_ai_saved'));
-    if (refresh) await loadOverview();
-    return true;
-  } catch (err) {
-    toast(`${t('msg_error')}: ${err.message}`);
-    return false;
+    const applySavedSettings = (settings, preferredProfileId) => {
+      aiAutoSaveSuppressed = true;
+      try {
+        if (settings?.ai) {
+          const selectedProfileId = applyAiSettingsState(settings.ai, preferredProfileId);
+          if (refresh) fillAiProfileForm(getAiProfileById(selectedProfileId));
+          renderAiProfileCards();
+          return;
+        }
+
+        const index = aiProfilesState.profiles.findIndex(item => item.id === preferredProfileId);
+        if (index >= 0) {
+          aiProfilesState.profiles[index] = normalizeAiProfile(
+            { ...aiProfilesState.profiles[index], ...payload, id: preferredProfileId },
+            preferredProfileId,
+            payload.name || aiProfilesState.profiles[index].name || `Provider ${index + 1}`
+          );
+          if (refresh) fillAiProfileForm(getAiProfileById(preferredProfileId));
+          renderAiProfileCards();
+        }
+      } finally {
+        aiAutoSaveSuppressed = false;
+      }
+    };
+
+    try {
+      const settings = await api(`/api/settings/ai/profiles/${encodeURIComponent(profileId)}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+
+      applySavedSettings(settings, profileId);
+      if (!silent) toast(t('msg_ai_saved'));
+      if (refresh) await loadOverview();
+      return true;
+    } catch (err) {
+      const detail = extractApiErrorMessage(err).toLowerCase();
+      const isProfileNotFound = detail.includes('not found') || detail.includes('profile not found');
+
+      if (!isProfileNotFound) {
+        toast(`${t('msg_error')}: ${extractApiErrorMessage(err) || err.message}`);
+        return false;
+      }
+
+      try {
+        const created = await api('/api/settings/ai/profiles', {
+          method: 'POST',
+          body: JSON.stringify({ ...payload, set_active: true })
+        });
+
+        aiAutoSaveSuppressed = true;
+        try {
+          if (created?.ai) {
+            const selectedProfileId = applyAiSettingsState(created.ai, created.ai.active_profile_id || '');
+            if (refresh) fillAiProfileForm(getAiProfileById(selectedProfileId));
+            renderAiProfileCards();
+          } else {
+            await loadSettings();
+          }
+        } finally {
+          aiAutoSaveSuppressed = false;
+        }
+
+        if (!silent) toast(t('msg_ai_saved'));
+        if (refresh) await loadOverview();
+        return true;
+      } catch (createErr) {
+        toast(`${t('msg_error')}: ${extractApiErrorMessage(createErr) || createErr.message}`);
+        return false;
+      }
+    }
+  } finally {
+    aiSaveInProgress = false;
   }
 }
 
@@ -1003,6 +1076,15 @@ async function testAISettings() {
   const resEl = $('#ai-test-result');
   resEl.classList.remove('hidden');
   resEl.textContent = t('msg_testing');
+
+  // Ensure the current profile is saved before testing
+  if (isAiProfileDirty()) {
+    const saved = await saveAISettings({ silent: true, refresh: false });
+    if (!saved) {
+      resEl.textContent = t('msg_error');
+      return;
+    }
+  }
 
   try {
     const profileId = aiProfilesState.selectedProfileId;
@@ -1014,8 +1096,9 @@ async function testAISettings() {
     if (data.ok) toast(t('msg_connection_success'));
     else toast(t('msg_connection_failed'));
   } catch (err) {
-    resEl.textContent = err.message;
-    toast(`${t('msg_error')}: ${err.message}`);
+    const detail = extractApiErrorMessage(err);
+    resEl.textContent = detail || err.message;
+    toast(`${t('msg_error')}: ${detail || err.message}`);
   }
 }
 
@@ -1075,7 +1158,14 @@ async function activateAiProfile(profileId) {
     }
     await loadOverview();
   } catch (err) {
-    toast(`${t('msg_error')}: ${err.message}`);
+    const detail = extractApiErrorMessage(err);
+    if (detail.toLowerCase().includes('not found')) {
+      // Profile doesn't exist on server; refresh from server to resync state
+      await loadSettings();
+      toast(`${t('msg_error')}: profile not found, settings refreshed`);
+    } else {
+      toast(`${t('msg_error')}: ${detail || err.message}`);
+    }
   }
 }
 
@@ -1096,7 +1186,14 @@ async function deleteAiProfile(profileId) {
     }
     await loadOverview();
   } catch (err) {
-    toast(`${t('msg_error')}: ${err.message}`);
+    const detail = extractApiErrorMessage(err);
+    if (detail.toLowerCase().includes('not found')) {
+      // Profile already gone on server; just refresh
+      await loadSettings();
+      toast(t('msg_deleted'));
+    } else {
+      toast(`${t('msg_error')}: ${detail || err.message}`);
+    }
   }
 }
 
@@ -1210,6 +1307,7 @@ async function importProblems() {
   const source = ($('#import-source')?.value || '').trim() || 'manual';
   const id = ($('#import-id')?.value || '').trim();
   const title = ($('#import-title')?.value || '').trim();
+  const url = ($('#import-url')?.value || '').trim();
   const status = ($('#import-status')?.value || 'unsolved').trim() || 'unsolved';
   const content = ($('#import-content')?.value || '').trim();
   const input_format = ($('#import-input-format')?.value || '').trim();
@@ -1231,6 +1329,7 @@ async function importProblems() {
     source,
     id,
     title,
+    url,
     status,
     content,
     input_format,
@@ -1248,6 +1347,7 @@ async function importProblems() {
     toast(`${t('msg_imported')}: ${resp.imported}, ${t('msg_updated')}: ${resp.updated}`);
     $('#import-id').value = '';
     $('#import-title').value = '';
+    $('#import-url').value = '';
     $('#import-content').value = '';
     $('#import-input-format').value = '';
     $('#import-output-format').value = '';
@@ -1351,15 +1451,35 @@ async function saveMetadata() {
 async function loadStatsCharts() {
   const heatmapContainer = $('#chart-activity-heatmap');
   const weeklyContainer = $('#chart-weekly-bar');
+  const rangeSelector = $('#heatmap-mode');
 
   if (!heatmapContainer) return; // Not on view
 
   heatmapContainer.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Loading...</div>`;
 
   try {
-    const data = await api('/api/stats/charts');
-    // data: { daily: [], weekly: [], monthly: ... }
-    renderActivityHeatmap(data.daily || []);
+    let query = '';
+    const range = rangeSelector ? rangeSelector.value : '365';
+
+    if (range === 'year') {
+      const today = new Date();
+      const year = today.getFullYear();
+      const start = `${year}-01-01`;
+      const end = today.toISOString().slice(0, 10);
+      query = `?from_date=${start}&to_date=${end}`;
+    } else {
+      // 365: default is 365 days in backend.
+      const today = new Date();
+      const start = new Date(today);
+      start.setDate(today.getDate() - 365);
+      const startStr = start.toISOString().slice(0, 10);
+      const endStr = today.toISOString().slice(0, 10);
+      query = `?from_date=${startStr}&to_date=${endStr}`;
+    }
+
+    const data = await api(`/api/stats/charts${query}`);
+    // data: { daily: [], weekly: [], monthly: ..., from_date, to_date }
+    renderActivityHeatmap(data.daily || [], data.from_date, data.to_date);
     renderWeeklyBarChart(data.weekly || []);
     summarizeWeeklyData(data.weekly || []);
   } catch (err) {
@@ -1367,11 +1487,9 @@ async function loadStatsCharts() {
   }
 }
 
-function renderActivityHeatmap(dailyData) {
+function renderActivityHeatmap(dailyData, fromDateStr, toDateStr) {
   const container = $('#chart-activity-heatmap');
-  // Simple SVG Heatmap (Last 26 weeks)
 
-  // Convert data to map: "YYYY-MM-DD" -> count
   const map = {};
   dailyData.forEach(d => {
     map[d.period_start] = d.solved_count;
@@ -1379,18 +1497,36 @@ function renderActivityHeatmap(dailyData) {
 
   const boxSize = 12;
   const gap = 3;
-  const weeks = 26; // Half a year roughly
   const days = 7;
+
+  // Determine date range
+  let start, end;
+
+  if (fromDateStr && toDateStr) {
+    start = new Date(fromDateStr);
+    end = new Date(toDateStr);
+  } else {
+    // Fallback to last 365 days (approx) if not provided
+    end = new Date();
+    start = new Date(end);
+    start.setDate(start.getDate() - 365);
+  }
+
+  // Align start to Sunday
+  // This ensures the first column starts with Sunday
+  const dayOfWeek = start.getDay(); // 0 is Sunday
+  start.setDate(start.getDate() - dayOfWeek);
+
+  // Calculate weeks needed to cover until end
+  // We might go a bit past 'end' to complete the week column
+  const diffTime = end.getTime() - start.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  // Add 1 to include end date, then divide by 7
+  const weeks = Math.ceil((diffDays + 1) / 7) + 1; // +1 buffer
+
   const width = weeks * (boxSize + gap);
   const height = days * (boxSize + gap);
 
-  // Calculate start date (26 weeks ago Sunday)
-  const end = new Date(); // Today
-  const start = new Date(end);
-  start.setDate(start.getDate() - (weeks * 7));
-
-  // Align start to previous Sunday to keep grid clean? 
-  // Or just simple loop. Let's do simple loop from start.
   const current = new Date(start);
 
   let svgContent = '';
@@ -1664,6 +1800,11 @@ async function init() {
   bindChange('#filter-status', loadProblems);
   bindChange('#filter-source', loadProblems);
   bindChange('#filter-keyword', debounce(loadProblems, 500));
+
+  const rangeSelector = $('#heatmap-mode');
+  if (rangeSelector) {
+    rangeSelector.addEventListener('change', () => loadStatsCharts());
+  }
 
   await loadSettings();
   await loadOverview();

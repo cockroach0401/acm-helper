@@ -13,7 +13,8 @@
     "http://127.0.0.1:8000/*",
     "https://codeforces.com/*",
     "https://ac.nowcoder.com/*",
-    "https://www.nowcoder.com/*"
+    "https://www.nowcoder.com/*",
+    "https://www.luogu.com.cn/*"
   ],
   "content_scripts": [
     {
@@ -44,6 +45,15 @@
       ],
       "js": [
         "content/nowcoder_practice_scraper.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.luogu.com.cn/problem/*"
+      ],
+      "js": [
+        "content/luogu_scraper.js"
       ],
       "run_at": "document_idle"
     }

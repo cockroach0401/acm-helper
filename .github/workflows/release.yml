@@ -3,53 +3,118 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*'  # Trigger on version tags
+      - 'v*'
 
 jobs:
   build-backend:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
-      - name: Install dependencies
+
+      - name: Resolve app version
+        shell: powershell
         run: |
-          cd backend
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install backend dependencies
+        shell: powershell
+        run: |
+          Set-Location backend
           pip install -r requirements.txt
           pip install pyinstaller
-      
-      - name: Build EXE
+
+      - name: Build backend EXE
+        shell: powershell
         run: |
-          cd backend
+          Set-Location backend
           pyinstaller build.spec
-          Copy-Item -Path "icon.ico" -Destination "dist/icon.ico"
-      
-      - name: Package Backend
+          Copy-Item -Path "icon.ico" -Destination "dist/icon.ico" -Force
+
+      - name: Prepare code signing certificate (optional)
+        if: ${{ secrets.WINDOWS_PFX_BASE64 != '' && secrets.WINDOWS_PFX_PASSWORD != '' }}
+        shell: powershell
         run: |
-          cd backend/dist
-          Compress-Archive -Path ACMHelper.exe,icon.ico -DestinationPath ACMHelper-Windows.zip
-      
-      - name: Upload Backend Artifact
+          $certPath = Join-Path $env:RUNNER_TEMP 'codesign.pfx'
+          [System.IO.File]::WriteAllBytes($certPath, [System.Convert]::FromBase64String("${{ secrets.WINDOWS_PFX_BASE64 }}"))
+          "SIGN_CERT_PATH=$certPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Sign backend EXE (optional)
+        if: ${{ env.SIGN_CERT_PATH != '' }}
+        shell: powershell
+        run: |
+          $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe' |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $signtool) {
+            throw 'signtool.exe not found'
+          }
+          & $signtool sign /fd SHA256 /f "$env:SIGN_CERT_PATH" /p "${{ secrets.WINDOWS_PFX_PASSWORD }}" /tr "http://timestamp.digicert.com" /td SHA256 "backend\dist\ACMHelper.exe"
+
+      - name: Install Inno Setup
+        shell: powershell
+        run: |
+          choco install innosetup --no-progress -y
+
+      - name: Build installer
+        shell: powershell
+        run: |
+          $compiler = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $compiler)) {
+            throw "ISCC not found: $compiler"
+          }
+          & $compiler "backend\installer\ACMHelper.iss"
+
+      - name: Sign installer EXE (optional)
+        if: ${{ env.SIGN_CERT_PATH != '' }}
+        shell: powershell
+        run: |
+          $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe' |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $signtool) {
+            throw 'signtool.exe not found'
+          }
+          $installer = Get-ChildItem 'backend\dist\ACMHelper-Setup-*.exe' | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $installer) {
+            throw 'installer exe not found'
+          }
+          & $signtool sign /fd SHA256 /f "$env:SIGN_CERT_PATH" /p "${{ secrets.WINDOWS_PFX_PASSWORD }}" /tr "http://timestamp.digicert.com" /td SHA256 "$installer"
+
+      - name: Package portable backend zip
+        shell: powershell
+        run: |
+          Set-Location backend\dist
+          Compress-Archive -Path ACMHelper.exe,icon.ico -DestinationPath ACMHelper-Portable.zip -Force
+
+      - name: Upload backend installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ACMHelper-Windows
-          path: backend/dist/ACMHelper-Windows.zip
+          name: ACMHelper-Installer
+          path: backend/dist/ACMHelper-Setup-*.exe
+
+      - name: Upload backend portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ACMHelper-Portable
+          path: backend/dist/ACMHelper-Portable.zip
 
   build-extension:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Package Extension
+
+      - name: Package extension
         run: |
           cd browser-extension
           zip -r ../acm-helper-extension.zip . -x "*.git*" -x "*.md"
-      
-      - name: Upload Extension Artifact
+
+      - name: Upload extension artifact
         uses: actions/upload-artifact@v4
         with:
           name: ACMHelper-Extension
@@ -63,11 +128,14 @@ jobs:
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
-      
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            ACMHelper-Windows/ACMHelper-Windows.zip
+            ACMHelper-Installer/*.exe
+            ACMHelper-Portable/ACMHelper-Portable.zip
             ACMHelper-Extension/acm-helper-extension.zip
           generate_release_notes: true
+
+

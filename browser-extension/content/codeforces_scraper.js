@@ -114,6 +114,7 @@
         source: 'codeforces',
         id: sourceId,
         title: title || 'Untitled',
+        url,
         content: contentWithSamples,
         input_format: inputFormat,
         output_format: outputFormat,
