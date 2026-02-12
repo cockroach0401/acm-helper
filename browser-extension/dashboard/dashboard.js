@@ -1197,9 +1197,9 @@ async function deleteAiProfile(profileId) {
   }
 }
 
-async function savePromptSettings() {
+async function saveAllSettings() {
   const selectedStyle = $('#weekly-prompt-style').value;
-  const payload = {
+  const promptPayload = {
     solution_template: $('#solution-template').value,
     insight_template: $('#weekly-template').value,
     weekly_prompt_style: ALLOWED_PROMPT_STYLES.includes(selectedStyle) ? selectedStyle : 'custom',
@@ -1209,44 +1209,41 @@ async function savePromptSettings() {
     weekly_style_concise_injection: $('#style-injection-concise').value
   };
 
-  try {
-    await api('/api/settings/prompts', {
-      method: 'PUT',
-      body: JSON.stringify(payload)
-    });
-    toast(t('msg_templates_saved'));
-  } catch (err) {
-    toast(`${t('msg_error')}: ${err.message}`);
-  }
-}
-
-async function saveUiSettings() {
   const storageBaseDirEl = $('#storage-base-dir');
   const previousStoragePath = (storageBaseDirEl?.dataset.currentPath || '').trim();
-  const payload = {
+  const uiPayload = {
     default_ac_language: $('#default-ac-language').value,
     storage_base_dir: (storageBaseDirEl?.value || '').trim()
   };
 
   try {
-    const data = await api('/api/settings/ui', {
+    // 1. Save Prompts
+    await api('/api/settings/prompts', {
       method: 'PUT',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(promptPayload)
     });
-    const lang = data?.ui?.default_ac_language || payload.default_ac_language;
+
+    // 2. Save UI Settings
+    const uiData = await api('/api/settings/ui', {
+      method: 'PUT',
+      body: JSON.stringify(uiPayload)
+    });
+
+    // Update UI state based on response
+    const lang = uiData?.ui?.default_ac_language || uiPayload.default_ac_language;
     const acLangEl = $('#ac-language');
     if (acLangEl) acLangEl.value = lang;
 
-    const savedStoragePath = (data?.ui?.storage_base_dir || payload.storage_base_dir || '').trim();
+    const savedStoragePath = (uiData?.ui?.storage_base_dir || uiPayload.storage_base_dir || '').trim();
     if (storageBaseDirEl) {
       storageBaseDirEl.value = savedStoragePath;
       storageBaseDirEl.dataset.currentPath = savedStoragePath;
     }
 
     if (previousStoragePath && savedStoragePath && previousStoragePath !== savedStoragePath) {
-      toast(t('msg_storage_path_saved'));
+      toast(`${t('msg_templates_saved')} & ${t('msg_storage_path_saved')}`);
     } else {
-      toast(t('msg_ui_saved'));
+      toast(`${t('msg_templates_saved')} & ${t('msg_ui_saved')}`);
     }
   } catch (err) {
     const detail = extractApiErrorMessage(err);
@@ -1779,8 +1776,7 @@ async function init() {
   bind('#test-ai-btn', testAISettings);
   bind('#toggle-solution-template-vars-btn', toggleSolutionTemplateVars);
   bind('#toggle-weekly-template-vars-btn', toggleWeeklyTemplateVars);
-  bind('#save-prompts-btn', savePromptSettings);
-  bind('#save-ui-settings-btn', saveUiSettings);
+  bind('#save-settings-btn', saveAllSettings);
   bind('#pick-storage-dir-btn', pickStorageDirectory);
   bindAiAutoSaveHandlers();
 

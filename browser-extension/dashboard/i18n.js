@@ -163,6 +163,7 @@ export const translations = {
         btn_hide_template_vars: 'Hide Variables',
         btn_save_templates: 'Save Templates',
         btn_save_ui: 'Save Language Settings',
+        btn_save_settings: 'Save Settings',
 
         // Toasts / Messages
         msg_testing: 'Testing...',
@@ -362,6 +363,7 @@ export const translations = {
         placeholder_style_injection_concise: '简洁风格的提示词注入槽...',
         btn_save_templates: '保存模板',
         btn_save_ui: '保存语言设置',
+        btn_save_settings: '保存设置',
 
         // Toasts / Messages
         msg_testing: '测试中...',
