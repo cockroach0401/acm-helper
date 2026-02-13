@@ -1236,7 +1236,7 @@ class FileManager:
                     changed = True
 
                 normalized_provider = self._normalize_provider_alias(
-                    str(profile.provider),
+                    profile.provider.value if isinstance(profile.provider, AIProvider) else str(profile.provider),
                     default_profile.provider,
                 )
                 if profile.provider != normalized_provider:

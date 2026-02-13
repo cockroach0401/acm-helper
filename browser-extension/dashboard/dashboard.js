@@ -10,10 +10,8 @@ let aiProfilesState = {
   selectedProfileId: '',
   profiles: []
 };
-let aiAutoSaveTimer = null;
 let aiSaveQueue = Promise.resolve(true);
 let aiSaveInProgress = false;
-let aiAutoSaveSuppressed = false;
 let isSolutionTemplateVarsOpen = false;
 let isWeeklyTemplateVarsOpen = false;
 
@@ -919,7 +917,6 @@ function renderModelOptions(options, selectedModel) {
       }
       $('#ai-model-options').value = nextOptions.join('\n');
       renderModelOptions(nextOptions, modelInput?.value?.trim() || nextOptions[0]);
-      scheduleAiAutoSave();
     });
   });
 }
@@ -981,65 +978,26 @@ function isAiProfileDirty(profileId = aiProfilesState.selectedProfileId) {
 
 function fillAiProfileForm(profile) {
   if (!profile) return;
-  const wasSuppressed = aiAutoSaveSuppressed;
-  aiAutoSaveSuppressed = true;
-  try {
-    $('#ai-provider-name').value = profile.name || '';
+  $('#ai-provider-name').value = profile.name || '';
 
-    const providerSelect = $('#ai-provider');
-    const provider = profile.provider || 'openai_compatible';
-    const exists = Array.from(providerSelect.options).some(opt => opt.value === provider);
-    providerSelect.value = exists ? provider : 'openai_compatible';
+  const providerSelect = $('#ai-provider');
+  const provider = profile.provider || 'openai_compatible';
+  const exists = Array.from(providerSelect.options).some(opt => opt.value === provider);
+  providerSelect.value = exists ? provider : 'openai_compatible';
 
-    $('#ai-api-base').value = profile.api_base || '';
-    $('#ai-api-key').value = profile.api_key || '';
-    $('#ai-model').value = profile.model || profile.model_options[0] || 'gpt-4o-mini';
-    $('#ai-model-options').value = (profile.model_options || []).join('\n');
-    $('#ai-temperature').value = profile.temperature ?? 0.2;
-    $('#ai-timeout').value = profile.timeout_seconds ?? 120;
-    renderModelOptions(profile.model_options || [profile.model || 'gpt-4o-mini'], profile.model);
-  } finally {
-    aiAutoSaveSuppressed = wasSuppressed;
-  }
-}
-
-function scheduleAiAutoSave(delay = 800) {
-  if (aiAutoSaveSuppressed || aiSaveInProgress) return;
-  if (aiAutoSaveTimer) {
-    clearTimeout(aiAutoSaveTimer);
-  }
-  aiAutoSaveTimer = setTimeout(() => {
-    aiAutoSaveTimer = null;
-    if (aiSaveInProgress || aiAutoSaveSuppressed) return;
-    saveAISettings({ silent: true, refresh: false, onlyIfDirty: true, suppressValidationToast: true }).catch(() => { });
-  }, delay);
-}
-
-function bindAiAutoSaveHandlers() {
-  const selectors = [
-    '#ai-provider-name',
-    '#ai-provider',
-    '#ai-api-base',
-    '#ai-api-key',
-    '#ai-model',
-    '#ai-temperature',
-    '#ai-timeout'
-  ];
-
-  const onProfileEdit = () => scheduleAiAutoSave();
-  selectors.forEach((selector) => {
-    const el = $(selector);
-    if (!el) return;
-    el.addEventListener('input', onProfileEdit);
-    el.addEventListener('change', onProfileEdit);
-  });
+  $('#ai-api-base').value = profile.api_base || '';
+  $('#ai-api-key').value = profile.api_key || '';
+  $('#ai-model').value = profile.model || profile.model_options[0] || 'gpt-4o-mini';
+  $('#ai-model-options').value = (profile.model_options || []).join('\n');
+  $('#ai-temperature').value = profile.temperature ?? 0.2;
+  $('#ai-timeout').value = profile.timeout_seconds ?? 120;
+  renderModelOptions(profile.model_options || [profile.model || 'gpt-4o-mini'], profile.model);
 }
 
 async function selectAiProfile(profileId) {
   if (!profileId || profileId === aiProfilesState.selectedProfileId) return;
   if (isAiProfileDirty(aiProfilesState.selectedProfileId)) {
-    const saved = await saveAISettings({ silent: true, refresh: false });
-    if (!saved) return;
+    if (!confirm(t('msg_unsaved_ai_changes') || 'You have unsaved AI settings changes. Discard?')) return;
   }
   aiProfilesState.selectedProfileId = profileId;
   fillAiProfileForm(getAiProfileById(profileId));
@@ -1206,9 +1164,6 @@ async function loadSettings(preferredProfileId = '') {
 }
 
 function saveAISettings(options = {}) {
-  if (aiSaveInProgress && options.onlyIfDirty) {
-    return Promise.resolve(true);
-  }
   aiSaveQueue = aiSaveQueue
     .catch(() => true)
     .then(() => saveAISettingsNow(options));
@@ -1222,11 +1177,6 @@ async function saveAISettingsNow({ silent = false, refresh = true, onlyIfDirty =
   aiSaveInProgress = true;
 
   try {
-    if (aiAutoSaveTimer) {
-      clearTimeout(aiAutoSaveTimer);
-      aiAutoSaveTimer = null;
-    }
-
     let profileId = aiProfilesState.selectedProfileId;
     let profile = getAiProfileById(profileId);
     if (!profile && aiProfilesState.profiles.length > 0) {
@@ -1251,27 +1201,22 @@ async function saveAISettingsNow({ silent = false, refresh = true, onlyIfDirty =
     }
 
     const applySavedSettings = (settings, preferredProfileId) => {
-      aiAutoSaveSuppressed = true;
-      try {
-        if (settings?.ai) {
-          const selectedProfileId = applyAiSettingsState(settings.ai, preferredProfileId);
-          if (refresh) fillAiProfileForm(getAiProfileById(selectedProfileId));
-          renderAiProfileCards();
-          return;
-        }
+      if (settings?.ai) {
+        const selectedProfileId = applyAiSettingsState(settings.ai, preferredProfileId);
+        if (refresh) fillAiProfileForm(getAiProfileById(selectedProfileId));
+        renderAiProfileCards();
+        return;
+      }
 
-        const index = aiProfilesState.profiles.findIndex(item => item.id === preferredProfileId);
-        if (index >= 0) {
-          aiProfilesState.profiles[index] = normalizeAiProfile(
-            { ...aiProfilesState.profiles[index], ...payload, id: preferredProfileId },
-            preferredProfileId,
-            payload.name || aiProfilesState.profiles[index].name || `Provider ${index + 1}`
-          );
-          if (refresh) fillAiProfileForm(getAiProfileById(preferredProfileId));
-          renderAiProfileCards();
-        }
-      } finally {
-        aiAutoSaveSuppressed = false;
+      const index = aiProfilesState.profiles.findIndex(item => item.id === preferredProfileId);
+      if (index >= 0) {
+        aiProfilesState.profiles[index] = normalizeAiProfile(
+          { ...aiProfilesState.profiles[index], ...payload, id: preferredProfileId },
+          preferredProfileId,
+          payload.name || aiProfilesState.profiles[index].name || `Provider ${index + 1}`
+        );
+        if (refresh) fillAiProfileForm(getAiProfileById(preferredProfileId));
+        renderAiProfileCards();
       }
     };
 
@@ -1300,17 +1245,12 @@ async function saveAISettingsNow({ silent = false, refresh = true, onlyIfDirty =
           body: JSON.stringify({ ...payload, set_active: true })
         });
 
-        aiAutoSaveSuppressed = true;
-        try {
-          if (created?.ai) {
-            const selectedProfileId = applyAiSettingsState(created.ai, created.ai.active_profile_id || '');
-            if (refresh) fillAiProfileForm(getAiProfileById(selectedProfileId));
-            renderAiProfileCards();
-          } else {
-            await loadSettings();
-          }
-        } finally {
-          aiAutoSaveSuppressed = false;
+        if (created?.ai) {
+          const selectedProfileId = applyAiSettingsState(created.ai, created.ai.active_profile_id || '');
+          if (refresh) fillAiProfileForm(getAiProfileById(selectedProfileId));
+          renderAiProfileCards();
+        } else {
+          await loadSettings();
         }
 
         if (!silent) toast(t('msg_ai_saved'));
@@ -1358,8 +1298,7 @@ async function testAISettings() {
 
 async function addAiProvider() {
   if (isAiProfileDirty()) {
-    const saved = await saveAISettings({ silent: true, refresh: false });
-    if (!saved) return;
+    if (!confirm(t('msg_unsaved_ai_changes') || 'You have unsaved AI settings changes. Discard?')) return;
   }
 
   const nextIndex = aiProfilesState.profiles.length + 1;
@@ -1396,8 +1335,7 @@ async function activateAiProfile(profileId) {
   if (!profileId) return;
 
   if (isAiProfileDirty()) {
-    const saved = await saveAISettings({ silent: true, refresh: false });
-    if (!saved) return;
+    if (!confirm(t('msg_unsaved_ai_changes') || 'You have unsaved AI settings changes. Discard?')) return;
   }
 
   try {
@@ -2045,12 +1983,12 @@ async function init() {
 
   bind('#import-btn', importProblems);
   bind('#add-ai-provider-btn', addAiProvider);
+  bind('#save-ai-btn', () => saveAISettings({ silent: false, refresh: true }));
   bind('#test-ai-btn', testAISettings);
   bind('#toggle-solution-template-vars-btn', toggleSolutionTemplateVars);
   bind('#toggle-weekly-template-vars-btn', toggleWeeklyTemplateVars);
   bind('#save-settings-btn', saveAllSettings);
   bind('#pick-storage-dir-btn', pickStorageDirectory);
-  bindAiAutoSaveHandlers();
 
   // Metadata Save
   bind('#save-ac-btn', saveMetadata);
