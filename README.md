@@ -1,4 +1,4 @@
-﻿# ACM Helper (V3.1.0) 🚀
+﻿# ACM Helper (V3.2.2) 🚀
 
 > 专为 ACMer 打造的智能做题助手：自动记录、AI 题解生成、数据可视化一站式解决方案。
 
@@ -36,7 +36,7 @@
 
 ### 第一步：启动后端服务
 1. 下载并解压最新版本的 ACM Helper。
-2. 运行 `ACM Helper.exe`（推荐在设置中开启**开机自启**，以便随时记录）。
+2. 运行 `ACM Helper.exe`（推荐在设置中开启**静默开机自启**，以便随时记录）。
    - *注：后端服务静默启动后会最小化到系统托盘，右键托盘图标可进行相关操作。*
 
 ### 第二步：安装浏览器插件
@@ -53,13 +53,14 @@
 ## ⚙️ 配置说明
 
 首次使用请点击浏览器右上角的插件图标，进入设置页面完成以下配置：
-
-### 1. 基础设置
-- **AI 接口地址 (API Base)**: 例如 `https://api.openai.com/v1` 或其他中转服务地址。
+### 1.存储目录设置
+- 初次使用时建议自行更改目录，方便通过 Typora、Obsidian 等笔记软件直接管理
+### 2. 基础设置
+- **AI 接口地址 (API Base)**: 例如 `https://api.openai.com/` 或其他中转服务地址。
 - **API Key**: 你的 API 密钥。
 - **模型名称**: 例如 `gpt-5.2`, `gemini-3-pro` 等。
 
-### 2. API 接口示例 (OpenAI Compatible)
+#### API 接口示例 (OpenAI Compatible)
 | 配置项 | 示例值 | 说明 |
 | :--- | :--- | :--- |
 | **Provider** | `openai_compatible` | 接口类型 |
@@ -91,9 +92,9 @@ backend/
 ## 🔄 支持平台
 
 目前已适配以下平台（更多平台持续适配中）：
-- ✅ **Codeforces** (包括 Gym, Group Contest)
+- ✅ **Codeforces** (包括 Gym, Contest)
 - ✅ **洛谷 (Luogu)**
-- ✅ **牛客网 (Nowcoder)** (包括练习赛、比赛)
+- ✅ **牛客网 (Nowcoder)** (包括练习、tracker、比赛)
 
 ---
 
