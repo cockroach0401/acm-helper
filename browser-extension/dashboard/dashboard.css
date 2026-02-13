@@ -336,6 +336,12 @@ button:disabled {
   overflow-x: auto;
 }
 
+.task-table-container {
+  max-height: 360px;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;

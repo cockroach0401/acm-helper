@@ -339,19 +339,23 @@ function renderPending(items) {
 function renderTasks(items) {
   const tbody = $('#task-table tbody');
   if (!items.length) {
-    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 1rem;">${t('no_tasks')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 1rem;">${t('no_tasks')}</td></tr>`;
     return;
   }
 
   tbody.innerHTML = items
     .map((task) => {
       let statusClass = 'status-warning';
-      if (task.status === 'done') statusClass = 'status-completed';
+      if (task.status === 'done' || task.status === 'succeeded') statusClass = 'status-completed';
       if (task.status === 'failed') statusClass = 'status-failed';
+
+      const problemNo = String(task.problem_key || '-').split(':').slice(1).join(':') || '-';
+      const providerName = task.provider_name || '-';
 
       return `
       <tr>
-        <td><span style="font-family:var(--font-mono); font-size:0.8rem;">${task.task_id.slice(0, 8)}</span></td>
+        <td><span style="font-family:var(--font-mono); font-size:0.8rem;">${problemNo}</span></td>
+        <td>${providerName}</td>
         <td><span class="status-badge ${statusClass}">${task.status}</span></td>
         <td style="word-break: break-word; min-width: 200px;">
             ${task.error_message || task.output_path || '-'}
