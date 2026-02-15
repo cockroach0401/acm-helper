@@ -425,7 +425,10 @@
           <div class="form-group">
             <div class="template-header-row">
               <label data-i18n="label_solution_template">Solution Prompt Template</label>
-              <button id="toggle-solution-template-vars-btn" type="button" class="btn btn-secondary btn-sm">Show Variables</button>
+              <div class="row-actions">
+                <button id="reset-solution-template-btn" type="button" class="btn btn-secondary btn-sm" data-i18n="btn_reset_default">Reset Default</button>
+                <button id="toggle-solution-template-vars-btn" type="button" class="btn btn-secondary btn-sm">Show Variables</button>
+              </div>
             </div>
             <textarea id="solution-template" rows="8"></textarea>
             <div id="solution-template-vars-panel" class="template-vars-panel hidden">
@@ -436,7 +439,10 @@
           <div class="form-group">
             <div class="template-header-row">
               <label data-i18n="label_weekly_template">Weekly Prompt Template</label>
-              <button id="toggle-weekly-template-vars-btn" type="button" class="btn btn-secondary btn-sm">Show Variables</button>
+              <div class="row-actions">
+                <button id="reset-weekly-template-btn" type="button" class="btn btn-secondary btn-sm" data-i18n="btn_reset_default">Reset Default</button>
+                <button id="toggle-weekly-template-vars-btn" type="button" class="btn btn-secondary btn-sm">Show Variables</button>
+              </div>
             </div>
             <textarea id="weekly-template" rows="8"></textarea>
             <div id="weekly-template-vars-panel" class="template-vars-panel hidden">

@@ -25,6 +25,12 @@ class WeeklyPromptStyle(str, Enum):
     concise = "concise"
 
 
+class PromptTemplateResetTarget(str, Enum):
+    solution = "solution"
+    insight = "insight"
+    both = "both"
+
+
 DEFAULT_SOLUTION_TEMPLATE = """你是一位经验丰富的竞赛程序员，精通算法与数据结构，擅长撰写清晰、严谨的 ACM/ICPC 风格题解。请按照以下结构为给定题目生成题解：
 
 ## 输入格式（系统注入变量）
@@ -230,6 +236,10 @@ class PromptSettingsUpdateRequest(BaseModel):
     weekly_style_rigorous_injection: str | None = None
     weekly_style_intuitive_injection: str | None = None
     weekly_style_concise_injection: str | None = None
+
+
+class PromptTemplateResetRequest(BaseModel):
+    target: PromptTemplateResetTarget = PromptTemplateResetTarget.both
 
 
 class UiSettings(BaseModel):

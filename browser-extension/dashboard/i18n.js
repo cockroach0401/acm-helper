@@ -175,6 +175,7 @@ export const translations = {
         btn_save_templates: 'Save Templates',
         btn_save_ui: 'Save Language Settings',
         btn_save_settings: 'Save Settings',
+        btn_reset_default: 'Reset Default',
 
         // Toasts / Messages
         msg_testing: 'Testing...',
@@ -211,6 +212,9 @@ export const translations = {
         msg_starting_generation: 'Starting generation for',
         msg_task_failed: 'Task failed',
         msg_select_week: 'Please select a week.',
+        msg_solution_template_reset: 'Solution template reset to default',
+        msg_weekly_template_reset: 'Weekly template reset to default',
+        msg_templates_reset: 'Templates reset to default',
 
         // Setup Overlay
         setup_title: 'Welcome to ACM Helper',
@@ -361,7 +365,7 @@ export const translations = {
         btn_save_ai: '保存 AI 设置',
         section_templates: '提示词模板',
         label_solution_template: '题解提示词模板',
-        label_weekly_template: '提示词模板',
+        label_weekly_template: '周报提示词模板',
         label_weekly_template_vars: '周报模板变量',
         label_solution_template_vars: '解法模板变量',
         btn_show_template_vars: '显示变量',
@@ -395,6 +399,7 @@ export const translations = {
         btn_save_templates: '保存模板',
         btn_save_ui: '保存语言设置',
         btn_save_settings: '保存设置',
+        btn_reset_default: '重置默认',
 
         // Toasts / Messages
         msg_testing: '测试中...请耐心等待...',
@@ -431,6 +436,9 @@ export const translations = {
         msg_starting_generation: '开始生成',
         msg_task_failed: '任务失败',
         msg_select_week: '请选择一周。',
+        msg_solution_template_reset: '题解提示词模板已重置为默认',
+        msg_weekly_template_reset: '周报提示词模板已重置为默认',
+        msg_templates_reset: '提示词模板已重置为默认',
 
         // Setup Overlay
         setup_title: '欢迎使用 ACM 助手',

@@ -14,8 +14,11 @@ from ..models.settings import (
     AISettings,
     AISettingsUpdateRequest,
     DEFAULT_INSIGHT_TEMPLATE,
+    DEFAULT_SOLUTION_TEMPLATE,
     PromptSettings,
     PromptSettingsUpdateRequest,
+    PromptTemplateResetRequest,
+    PromptTemplateResetTarget,
     UiSettings,
     UiSettingsUpdateRequest,
     WeeklyPromptStyle,
@@ -306,6 +309,35 @@ def update_prompt_settings(
         prompts = PromptSettings(**payload)
     except ValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    settings = fm.update_prompt_settings(prompts)
+    return settings.model_dump(mode="json")
+
+
+@router.post("/prompts/reset")
+def reset_prompt_settings(
+    req: PromptTemplateResetRequest,
+    fm: FileManager = Depends(get_file_manager),
+):
+    current = fm.get_settings()
+    target = req.target
+
+    solution_template = current.prompts.solution_template
+    insight_template = current.prompts.insight_template
+
+    if target in {PromptTemplateResetTarget.solution, PromptTemplateResetTarget.both}:
+        solution_template = DEFAULT_SOLUTION_TEMPLATE
+    if target in {PromptTemplateResetTarget.insight, PromptTemplateResetTarget.both}:
+        insight_template = DEFAULT_INSIGHT_TEMPLATE
+
+    prompts = PromptSettings(
+        solution_template=solution_template,
+        insight_template=insight_template,
+        weekly_prompt_style=current.prompts.weekly_prompt_style,
+        weekly_style_custom_injection=current.prompts.weekly_style_custom_injection,
+        weekly_style_rigorous_injection=current.prompts.weekly_style_rigorous_injection,
+        weekly_style_intuitive_injection=current.prompts.weekly_style_intuitive_injection,
+        weekly_style_concise_injection=current.prompts.weekly_style_concise_injection,
+    )
     settings = fm.update_prompt_settings(prompts)
     return settings.model_dump(mode="json")
 

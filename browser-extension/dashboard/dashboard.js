@@ -1473,6 +1473,32 @@ async function pickStorageDirectory() {
   }
 }
 
+async function resetPromptTemplate(target) {
+  const normalizedTarget = target === 'solution' ? 'solution' : (target === 'insight' ? 'insight' : 'both');
+  try {
+    const settings = await api('/api/settings/prompts/reset', {
+      method: 'POST',
+      body: JSON.stringify({ target: normalizedTarget })
+    });
+
+    const prompts = settings?.prompts || {};
+    if (normalizedTarget === 'solution') {
+      $('#solution-template').value = prompts.solution_template || '';
+      toast(t('msg_solution_template_reset'));
+    } else if (normalizedTarget === 'insight') {
+      $('#weekly-template').value = prompts.insight_template || '';
+      toast(t('msg_weekly_template_reset'));
+    } else {
+      $('#solution-template').value = prompts.solution_template || '';
+      $('#weekly-template').value = prompts.insight_template || '';
+      toast(t('msg_templates_reset'));
+    }
+  } catch (err) {
+    const detail = extractApiErrorMessage(err);
+    toast(`${t('msg_error')}: ${detail || err.message}`);
+  }
+}
+
 async function loadOverview() {
   const month = monthInputValueToApiMonth($('#month').value);
   const query = month ? `?month=${encodeURIComponent(month)}` : '';
@@ -1997,6 +2023,8 @@ async function init() {
   bind('#test-ai-btn', testAISettings);
   bind('#toggle-solution-template-vars-btn', toggleSolutionTemplateVars);
   bind('#toggle-weekly-template-vars-btn', toggleWeeklyTemplateVars);
+  bind('#reset-solution-template-btn', () => resetPromptTemplate('solution'));
+  bind('#reset-weekly-template-btn', () => resetPromptTemplate('insight'));
   bind('#save-settings-btn', saveAllSettings);
   bind('#pick-storage-dir-btn', pickStorageDirectory);
 
