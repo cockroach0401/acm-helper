@@ -93,10 +93,19 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
 
+      - name: Build combined release zip
+        run: |
+          mkdir -p release-assets
+          cp ACMHelper-Installer/ACMHelper-Setup-*.exe release-assets/
+          cp ACMHelper-Extension/acm-helper-extension.zip release-assets/
+          cd release-assets
+          zip -r ../acm-helper.zip .
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
+            acm-helper.zip
             ACMHelper-Installer/*.exe
             ACMHelper-Portable/ACMHelper-Portable.zip
             ACMHelper-Extension/acm-helper-extension.zip

@@ -34,10 +34,12 @@
 
 ## 🛠️ 安装指南
 
+### 下载
+ - 下载[release](https://github.com/cockroach0401/acm-helper/releases)中的acm-helper.zip,并解压。
+
 ### 第一步：启动后端服务
-1. 下载并解压最新版本的 ACM Helper。
-   -推荐下载[release](https://github.com/cockroach0401/acm-helper/releases)中的第一个和第三个(安装包),第二个为便携版,无法配置开机自启动。
-2. 运行安装包,推荐在设置中开启**静默开机自启**，以便随时记录）。
+
+- 运行压缩包里的安装包,推荐在设置中开启**静默开机自启**，以便随时记录）。
    - *注：后端服务安装好静默启动后会最小化到系统托盘，右键托盘图标可进行相关操作。*
 
 ### 第二步：安装浏览器插件
@@ -46,7 +48,7 @@
    - Edge: `edge://extensions`
 2. 开启右上角的 **"开发者模式" (Developer mode)**。
 3. 点击 **"加载已解压的扩展程序" (Load unpacked)**。
-4. 解压并选择选择本项目中的 `acm-helper-extension.zip` 文件夹。
+4. 选择解压好的的 `acm-helper-extension` 文件夹。
 5. 安装完成后，建议将 **ACM Helper** 插件固定到浏览器工具栏。
 
 ---
@@ -77,7 +79,7 @@
 
 ## 📂 数据存储结构
 
-你的做题记录将按以下目录结构保存在本地 `backend/data` 目录下(建议自行更改目录)，方便通过 Typora、Obsidian 等笔记软件直接管理：
+你的做题记录将按以下目录结构保存在本地 `data` 目录下(建议自行更改目录)，方便通过 Typora、Obsidian 等笔记软件直接管理：
 
 ```text
 backend/
