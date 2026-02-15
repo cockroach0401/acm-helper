@@ -165,7 +165,7 @@ class AIProfile(BaseModel):
     model: str = "gpt-5.2"
     model_options: list[str] = Field(default_factory=lambda: ["gpt-5.2"])
     temperature: float = 0.2
-    timeout_seconds: int = 120
+    timeout_seconds: int = 600
 
 
 class AISettings(BaseModel):
@@ -192,7 +192,7 @@ class AISettingsUpdateRequest(BaseModel):
     model: str = "gpt-5.2"
     model_options: list[str] = Field(default_factory=lambda: ["gpt-5.2"])
     temperature: float = 0.2
-    timeout_seconds: int = 120
+    timeout_seconds: int = 600
 
 
 class AIProfileCreateRequest(BaseModel):
@@ -203,7 +203,7 @@ class AIProfileCreateRequest(BaseModel):
     model: str = "gpt-5.2"
     model_options: list[str] = Field(default_factory=lambda: ["gpt-5.2"])
     temperature: float = 0.2
-    timeout_seconds: int = 120
+    timeout_seconds: int = 600
     set_active: bool = True
 
 
@@ -215,7 +215,7 @@ class AIProfileUpdateRequest(BaseModel):
     model: str = "gpt-5.2"
     model_options: list[str] = Field(default_factory=lambda: ["gpt-5.2"])
     temperature: float = 0.2
-    timeout_seconds: int = 120
+    timeout_seconds: int = 600
 
 
 class PromptSettings(BaseModel):

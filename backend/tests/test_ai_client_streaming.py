@@ -85,13 +85,13 @@ class AIClientStreamingTests(unittest.TestCase):
 
         self.assertIn("bad request", str(ctx.exception))
 
-    def test_build_timeout_uses_longer_read_window(self) -> None:
-        profile = AIProfile(timeout_seconds=120)
+    def test_build_timeout_uses_idle_read_window(self) -> None:
+        profile = AIProfile(timeout_seconds=600)
 
         timeout = self.client._build_timeout(profile.timeout_seconds)
 
         self.assertEqual(timeout.connect, 30.0)
-        self.assertEqual(timeout.read, 360.0)
+        self.assertEqual(timeout.read, 600.0)
         self.assertEqual(timeout.write, 60.0)
         self.assertEqual(timeout.pool, 30.0)
 

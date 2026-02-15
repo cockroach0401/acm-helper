@@ -333,7 +333,7 @@ class FileManager:
             model=model,
             model_options=[model],
             temperature=float(os.getenv("AI_TEMPERATURE", "0.2")),
-            timeout_seconds=int(os.getenv("AI_TIMEOUT_SECONDS", "120")),
+            timeout_seconds=int(os.getenv("AI_TIMEOUT_SECONDS", "600")),
         )
 
     def upsert_problems(self, items: list[ProblemInput]) -> tuple[int, int, list[ProblemRecord]]:

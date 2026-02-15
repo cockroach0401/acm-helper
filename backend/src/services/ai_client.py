@@ -140,10 +140,12 @@ class AIClient:
         return content
 
     def _build_timeout(self, timeout_seconds: int) -> httpx.Timeout:
-        base = float(max(1, timeout_seconds or 120))
+        # 对流式请求，read 超时应表示“多久没有收到任何新数据”而不是总耗时。
+        # 因此将 read 直接设置为用户配置值（默认 600s），避免按总时长放大。
+        base = float(max(1, timeout_seconds or 600))
         return httpx.Timeout(
             connect=min(30.0, max(5.0, base / 2.0)),
-            read=max(300.0, base * 3.0),
+            read=base,
             write=min(60.0, max(10.0, base / 2.0)),
             pool=min(30.0, max(5.0, base / 3.0)),
         )

@@ -842,7 +842,7 @@ function normalizeAiProfile(raw, fallbackId, fallbackName) {
     model,
     model_options,
     temperature: Number.isFinite(temperatureValue) ? temperatureValue : 0.2,
-    timeout_seconds: Number.isFinite(timeoutValue) ? timeoutValue : 120
+    timeout_seconds: Number.isFinite(timeoutValue) ? timeoutValue : 600
   };
 }
 
@@ -956,7 +956,7 @@ function readAiProfileForm() {
     model,
     model_options: modelOptions,
     temperature: Number.isFinite(temperature) ? temperature : 0.2,
-    timeout_seconds: Number.isFinite(timeout) ? timeout : 120
+    timeout_seconds: Number.isFinite(timeout) ? timeout : 600
   };
 }
 
@@ -973,7 +973,7 @@ function normalizeAiPayloadForCompare(payload) {
     model,
     model_options: options,
     temperature: Number(payload.temperature ?? 0.2),
-    timeout_seconds: Number(payload.timeout_seconds ?? 120)
+    timeout_seconds: Number(payload.timeout_seconds ?? 600)
   };
 }
 
@@ -999,7 +999,7 @@ function fillAiProfileForm(profile) {
   $('#ai-model').value = profile.model || profile.model_options[0] || 'gpt-4o-mini';
   $('#ai-model-options').value = (profile.model_options || []).join('\n');
   $('#ai-temperature').value = profile.temperature ?? 0.2;
-  $('#ai-timeout').value = profile.timeout_seconds ?? 120;
+  $('#ai-timeout').value = profile.timeout_seconds ?? 600;
   renderModelOptions(profile.model_options || [profile.model || 'gpt-4o-mini'], profile.model);
 }
 
@@ -1320,7 +1320,7 @@ async function addAiProvider() {
     model: 'gpt-4o-mini',
     model_options: ['gpt-4o-mini'],
     temperature: 0.2,
-    timeout_seconds: 120,
+    timeout_seconds: 600,
     set_active: true
   };
 
