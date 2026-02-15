@@ -29,6 +29,8 @@ const SOLUTION_TEMPLATE_VARIABLES = [
   '{{input_format}}',
   '{{output_format}}',
   '{{constraints}}',
+  '{{reflection}}',
+  '{{my_ac_code}}',
   '{{default_ac_language}}'
 ];
 

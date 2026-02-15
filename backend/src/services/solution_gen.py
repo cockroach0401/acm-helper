@@ -41,6 +41,8 @@ def build_solution_prompt(
         "input_format": problem.input_format,
         "output_format": problem.output_format,
         "constraints": problem.constraints,
+        "reflection": problem.reflection,
+        "my_ac_code": problem.my_ac_code,
         "default_ac_language": default_ac_language,
         "prompt_style": selected_style,
         "style_prompt_injection": style_prompt_injection,
