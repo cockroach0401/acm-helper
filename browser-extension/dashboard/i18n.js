@@ -178,6 +178,7 @@ export const translations = {
 
         // Toasts / Messages
         msg_testing: 'Testing...',
+        msg_test_success: 'Connection test passed. Model is available.',
         msg_connection_success: 'Connection Successful',
         msg_connection_failed: 'Connection Failed',
         msg_ai_saved: 'AI Settings Saved',
@@ -396,7 +397,8 @@ export const translations = {
         btn_save_settings: '保存设置',
 
         // Toasts / Messages
-        msg_testing: '测试中...',
+        msg_testing: '测试中...请耐心等待...',
+        msg_test_success: '连接测试通过，模型可用',
         msg_connection_success: '连接成功',
         msg_connection_failed: '连接失败',
         msg_ai_saved: 'AI 设置已保存',

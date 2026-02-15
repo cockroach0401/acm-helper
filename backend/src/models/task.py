@@ -20,6 +20,7 @@ class TaskStatus(str, Enum):
 class SolutionTaskRecord(BaseModel):
     task_id: str
     problem_key: str
+    provider_name: str | None = None
     status: TaskStatus = TaskStatus.queued
     error_message: str | None = None
     output_path: str | None = None

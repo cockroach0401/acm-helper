@@ -982,11 +982,11 @@ class FileManager:
         except Exception:
             return None
 
-    def create_task(self, key: str) -> SolutionTaskRecord:
+    def create_task(self, key: str, provider_name: str | None = None) -> SolutionTaskRecord:
         with self._lock:
             tasks = self._read_json(self.tasks_file)
             task_id = uuid.uuid4().hex
-            record = SolutionTaskRecord(task_id=task_id, problem_key=key)
+            record = SolutionTaskRecord(task_id=task_id, problem_key=key, provider_name=provider_name)
             tasks[task_id] = record.model_dump(mode="json")
             self._write_json(self.tasks_file, tasks)
             return record

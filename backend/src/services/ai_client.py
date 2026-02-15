@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+from typing import Any
+
 import httpx
 
 from ..models.settings import AIProfile, AIProvider, AISettings
@@ -65,17 +68,15 @@ class AIClient:
             "model": profile.model,
             "messages": messages,
             "temperature": profile.temperature,
+            "stream": True,
         }
 
-        async with httpx.AsyncClient(timeout=profile.timeout_seconds) as client:
-            resp = await client.post(url, headers=headers, json=payload)
-            resp.raise_for_status()
-            data = resp.json()
+        timeout = self._build_timeout(profile.timeout_seconds)
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            async with client.stream("POST", url, headers=headers, json=payload) as resp:
+                await self._raise_for_status_with_body(resp, "openai-compatible")
+                content = await self._collect_openai_stream_text(resp)
 
-        choices = data.get("choices", [])
-        if not choices:
-            raise RuntimeError("No choices returned from model provider")
-        content = choices[0].get("message", {}).get("content", "")
         if not content:
             raise RuntimeError("Empty content returned from model provider")
         return content
@@ -125,20 +126,154 @@ class AIClient:
             "max_tokens": 4096,
             "temperature": profile.temperature,
             "messages": messages,
+            "stream": True,
         }
 
-        async with httpx.AsyncClient(timeout=profile.timeout_seconds) as client:
-            resp = await client.post(url, headers=headers, json=payload)
-            resp.raise_for_status()
-            data = resp.json()
+        timeout = self._build_timeout(profile.timeout_seconds)
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            async with client.stream("POST", url, headers=headers, json=payload) as resp:
+                await self._raise_for_status_with_body(resp, "anthropic")
+                content = await self._collect_anthropic_stream_text(resp)
 
-        content_blocks = data.get("content", [])
-        text_parts: list[str] = []
-        for block in content_blocks:
-            if isinstance(block, dict) and block.get("type") == "text":
-                text_parts.append(block.get("text", ""))
-
-        content = "\n".join([part for part in text_parts if part]).strip()
         if not content:
             raise RuntimeError("Empty content returned from anthropic provider")
         return content
+
+    def _build_timeout(self, timeout_seconds: int) -> httpx.Timeout:
+        base = float(max(1, timeout_seconds or 120))
+        return httpx.Timeout(
+            connect=min(30.0, max(5.0, base / 2.0)),
+            read=max(300.0, base * 3.0),
+            write=min(60.0, max(10.0, base / 2.0)),
+            pool=min(30.0, max(5.0, base / 3.0)),
+        )
+
+    async def _raise_for_status_with_body(self, resp: httpx.Response, provider_name: str) -> None:
+        if resp.is_success:
+            return
+        body = (await resp.aread()).decode("utf-8", errors="replace").strip()
+        detail = f" {body}" if body else ""
+        raise RuntimeError(f"{provider_name} provider error [{resp.status_code}].{detail}")
+
+    async def _collect_openai_stream_text(self, resp: httpx.Response) -> str:
+        text_parts: list[str] = []
+        async for _event_name, data in self._iter_sse_events(resp):
+            should_stop = self._consume_openai_sse_data(data, text_parts)
+            if should_stop:
+                break
+        return "".join(text_parts).strip()
+
+    async def _collect_anthropic_stream_text(self, resp: httpx.Response) -> str:
+        text_parts: list[str] = []
+        async for event_name, data in self._iter_sse_events(resp):
+            should_stop = self._consume_anthropic_sse_data(event_name, data, text_parts)
+            if should_stop:
+                break
+        return "".join(text_parts).strip()
+
+    async def _iter_sse_events(self, resp: httpx.Response):
+        event_name = ""
+        data_lines: list[str] = []
+
+        async for raw_line in resp.aiter_lines():
+            line = raw_line.strip("\ufeff")
+            if not line:
+                if data_lines:
+                    yield event_name, "\n".join(data_lines)
+                event_name = ""
+                data_lines = []
+                continue
+
+            if line.startswith(":"):
+                continue
+
+            if line.startswith("event:"):
+                event_name = line[6:].strip()
+                continue
+
+            if line.startswith("data:"):
+                data_lines.append(line[5:].lstrip())
+
+        if data_lines:
+            yield event_name, "\n".join(data_lines)
+
+    def _consume_openai_sse_data(self, data: str, text_parts: list[str]) -> bool:
+        payload = data.strip()
+        if not payload:
+            return False
+        if payload == "[DONE]":
+            return True
+
+        obj = self._load_json_payload(payload)
+        if not obj:
+            return False
+
+        error_obj = obj.get("error")
+        if isinstance(error_obj, dict):
+            msg = str(error_obj.get("message") or "unknown error")
+            raise RuntimeError(f"openai-compatible stream error: {msg}")
+
+        choices = obj.get("choices")
+        if not isinstance(choices, list):
+            return False
+
+        for choice in choices:
+            if not isinstance(choice, dict):
+                continue
+            delta = choice.get("delta", {})
+            if not isinstance(delta, dict):
+                continue
+            content = delta.get("content")
+            if isinstance(content, str):
+                text_parts.append(content)
+                continue
+            if isinstance(content, list):
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "text":
+                        text = part.get("text")
+                        if isinstance(text, str):
+                            text_parts.append(text)
+        return False
+
+    def _consume_anthropic_sse_data(self, event_name: str, data: str, text_parts: list[str]) -> bool:
+        payload = data.strip()
+        if not payload:
+            return False
+        if payload == "[DONE]":
+            return True
+
+        obj = self._load_json_payload(payload)
+        if not obj:
+            return False
+
+        if isinstance(obj.get("error"), dict):
+            msg = str(obj["error"].get("message") or "unknown error")
+            raise RuntimeError(f"anthropic stream error: {msg}")
+
+        resolved_event = event_name or str(obj.get("type") or "")
+        if resolved_event == "message_stop":
+            return True
+
+        if resolved_event != "content_block_delta":
+            return False
+
+        delta = obj.get("delta")
+        if not isinstance(delta, dict):
+            return False
+
+        if delta.get("type") != "text_delta":
+            return False
+
+        text = delta.get("text")
+        if isinstance(text, str):
+            text_parts.append(text)
+        return False
+
+    def _load_json_payload(self, payload: str) -> dict[str, Any] | None:
+        try:
+            value = json.loads(payload)
+        except json.JSONDecodeError:
+            return None
+        if isinstance(value, dict):
+            return value
+        return None

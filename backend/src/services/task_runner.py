@@ -17,7 +17,9 @@ class TaskRunner:
         self._semaphore = asyncio.Semaphore(self.max_concurrency)
 
     async def enqueue_solution_task(self, problem_key: str) -> str:
-        task = self.fm.create_task(problem_key)
+        settings = self.fm.get_settings()
+        active_profile = settings.ai.resolve_active_profile()
+        task = self.fm.create_task(problem_key, provider_name=active_profile.name)
         self.fm.set_problem_solution_state(problem_key, SolutionStatus.queued)
         asyncio.create_task(self._run_solution_task(task.task_id))
         return task.task_id

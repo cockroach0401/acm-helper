@@ -367,6 +367,14 @@ Base URL（默认）：`http://localhost:8000`
 - 用于前端模型下拉列表。
 - `model` 必须在 `model_options` 中（后端会自动纠正并补全）。
 
+`timeout_seconds` 说明：
+- 该值用于构造后端到上游 AI 的分项超时策略（connect/read/write/pool）。
+- 为降低长输出被网关或中间层截断的概率，`read timeout` 会按更宽松窗口处理。
+
+流式请求说明（后端内部行为）：
+- `openai_compatible` 与 `anthropic` 均以流式方式请求上游（`stream=true`）。
+- 后端会边接收边拼接文本增量，最终接口返回仍为**完整字符串**（与历史接口兼容，不改变前端调用方式）。
+
 响应：返回完整 `settings`（同 `GET /api/settings` 结构）。
 
 ---

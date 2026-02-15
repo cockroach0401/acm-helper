@@ -218,9 +218,10 @@ function initTheme() {
 
 // --- UI / Navigation ---
 
-function toast(msg) {
+function toast(msg, type = 'info') {
   const el = $('#toast');
   el.textContent = msg;
+  el.dataset.type = type;
   el.style.display = 'block';
   el.style.animation = 'none';
   el.offsetHeight;
@@ -336,12 +337,14 @@ function renderPending(items) {
   });
 }
 
-function renderTasks(items) {
+function renderTasks(items, overviewAi = null) {
   const tbody = $('#task-table tbody');
   if (!items.length) {
     tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 1rem;">${t('no_tasks')}</td></tr>`;
     return;
   }
+
+  const activeProviderName = String(overviewAi?.provider_name || '').trim();
 
   tbody.innerHTML = items
     .map((task) => {
@@ -350,7 +353,7 @@ function renderTasks(items) {
       if (task.status === 'failed') statusClass = 'status-failed';
 
       const problemNo = String(task.problem_key || '-').split(':').slice(1).join(':') || '-';
-      const providerName = task.provider_name || '-';
+      const providerName = String(task.provider_name || '').trim() || activeProviderName || '-';
 
       return `
       <tr>
@@ -1272,14 +1275,17 @@ async function saveAISettingsNow({ silent = false, refresh = true, onlyIfDirty =
 
 async function testAISettings() {
   const resEl = $('#ai-test-result');
-  resEl.classList.remove('hidden');
-  resEl.textContent = t('msg_testing');
+  if (resEl) {
+    resEl.classList.add('hidden');
+    resEl.textContent = '';
+  }
+  toast(t('msg_testing'));
 
   // Ensure the current profile is saved before testing
   if (isAiProfileDirty()) {
     const saved = await saveAISettings({ silent: true, refresh: false });
     if (!saved) {
-      resEl.textContent = t('msg_error');
+      toast(t('msg_error'), 'error');
       return;
     }
   }
@@ -1290,13 +1296,11 @@ async function testAISettings() {
       ? `/api/settings/ai/profiles/${encodeURIComponent(profileId)}/test`
       : '/api/settings/ai/test';
     const data = await api(endpoint, { method: 'POST' });
-    resEl.textContent = JSON.stringify(data, null, 2);
-    if (data.ok) toast(t('msg_connection_success'));
-    else toast(t('msg_connection_failed'));
+    if (data.ok) toast(t('msg_test_success'), 'success');
+    else toast(t('msg_connection_failed'), 'error');
   } catch (err) {
     const detail = extractApiErrorMessage(err);
-    resEl.textContent = detail || err.message;
-    toast(`${t('msg_error')}: ${detail || err.message}`);
+    toast(`${t('msg_error')}: ${detail || err.message}`, 'error');
   }
 }
 
@@ -1474,7 +1478,7 @@ async function loadOverview() {
 
   renderStats(data.stats || {});
   renderPending(data.pending || []);
-  renderTasks(data.tasks || []);
+  renderTasks(data.tasks || [], data.ai || null);
 
   const hasActive = (data.tasks || []).some((task) => task.status === 'queued' || task.status === 'running');
   if (hasActive) startPolling();
