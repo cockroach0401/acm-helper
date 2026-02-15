@@ -153,8 +153,29 @@ class FileManager:
         return sorted(self.base.glob(f"*/problems/{filename}"))
 
     def _iter_solution_markdown_paths(self, source: str, problem_id: str) -> list[Path]:
-        filename = f"{source}_{problem_id}.md"
-        return sorted(self.base.glob(f"*/solutions/{filename}"))
+        base_name = f"{source}_{problem_id}"
+        matched = sorted(self.base.glob(f"*/solutions/{base_name}*.md"))
+        return [
+            path
+            for path in matched
+            if path.name == f"{base_name}.md" or path.name.startswith(f"{base_name}__dup_")
+        ]
+
+    def _next_available_solution_md_path(self, source: str, problem_id: str, month: str) -> Path:
+        solution_dir = self.base / month / "solutions"
+        solution_dir.mkdir(parents=True, exist_ok=True)
+
+        base_name = f"{source}_{problem_id}"
+        base_path = solution_dir / f"{base_name}.md"
+        if not base_path.exists():
+            return base_path
+
+        idx = 2
+        while True:
+            candidate = solution_dir / f"{base_name}__dup_{idx}.md"
+            if not candidate.exists():
+                return candidate
+            idx += 1
 
     def _build_solution_markdown(self, record: ProblemRecord, content: str, solution_path: Path) -> str:
         body = (content or "").rstrip("\n")
@@ -1063,9 +1084,7 @@ class FileManager:
 
     def save_solution_file(self, problem: ProblemRecord, content: str) -> str:
         month = current_month()
-        solution_dir = self.base / month / "solutions"
-        solution_dir.mkdir(parents=True, exist_ok=True)
-        path = solution_dir / f"{problem.source}_{problem.id}.md"
+        path = self._next_available_solution_md_path(problem.source, problem.id, month)
         final_content = self._build_solution_markdown(problem, content, path)
         path.write_text(final_content, encoding="utf-8")
         return str(path)

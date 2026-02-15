@@ -89,5 +89,21 @@ class SolutionMarkdownReferenceTests(unittest.TestCase):
         self.assertIn("中文标题", problem_text)
         self.assertIn("题目描述：给定一个数组，求和。", problem_text)
 
+    def test_auto_renames_when_solution_filename_conflicts(self) -> None:
+        problem = self._make_problem(problem_id="dup-1")
+
+        first_path = Path(self.fm.save_solution_file(problem, "# S1"))
+        second_path = Path(self.fm.save_solution_file(problem, "# S2"))
+        third_path = Path(self.fm.save_solution_file(problem, "# S3"))
+
+        self.assertEqual(first_path.name, "codeforces_dup-1.md")
+        self.assertEqual(second_path.name, "codeforces_dup-1__dup_2.md")
+        self.assertEqual(third_path.name, "codeforces_dup-1__dup_3.md")
+
+        self.assertEqual(first_path.read_text(encoding="utf-8"), "# S1\n")
+        self.assertEqual(second_path.read_text(encoding="utf-8"), "# S2\n")
+        self.assertEqual(third_path.read_text(encoding="utf-8"), "# S3\n")
+
+
 if __name__ == "__main__":
     unittest.main()
