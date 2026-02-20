@@ -12,6 +12,7 @@
     "http://localhost:8000/*",
     "http://127.0.0.1:8000/*",
     "https://codeforces.com/*",
+    "https://atcoder.jp/*",
     "https://ac.nowcoder.com/*",
     "https://www.nowcoder.com/*",
     "https://www.luogu.com.cn/*"
@@ -26,6 +27,15 @@
       ],
       "js": [
         "content/codeforces_scraper.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://atcoder.jp/contests/*/tasks/*"
+      ],
+      "js": [
+        "content/atcoder_scraper.js"
       ],
       "run_at": "document_idle"
     },

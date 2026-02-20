@@ -6,12 +6,14 @@ const $$ = (selector) => document.querySelectorAll(selector);
 
 // Constants
 const CF_MESSAGE_TYPE = 'ACM_HELPER_CF_SCRAPE';
+const ATCODER_MESSAGE_TYPE = 'ACM_HELPER_ATCODER_SCRAPE';
 const NC_ACM_MESSAGE_TYPE = 'ACM_HELPER_NC_ACM_SCRAPE';
 const NC_PRACTICE_MESSAGE_TYPE = 'ACM_HELPER_NC_PRACTICE_SCRAPE';
 const LUOGU_MESSAGE_TYPE = 'ACM_HELPER_LUOGU_SCRAPE';
 
 const CF_URL_RE = /^https:\/\/codeforces\.com\/(contest|gym)\/\d+\/problem\/[A-Za-z0-9_]+(?:\?.*)?$/i;
 const CF_GROUP_URL_RE = /^https:\/\/codeforces\.com\/group\/[^/]+\/(contest|gym)\/\d+\/problem\/[A-Za-z0-9_]+(?:\?.*)?$/i;
+const ATCODER_TASK_URL_RE = /^https:\/\/atcoder\.jp\/contests\/[^/]+\/tasks\/[^/?#]+(?:\?.*)?$/i;
 const NC_ACM_PROBLEM_URL_RE = /^https:\/\/ac\.nowcoder\.com\/acm\/problem\/\d+(?:\?.*)?$/i;
 const NC_ACM_CONTEST_URL_RE = /^https:\/\/ac\.nowcoder\.com\/acm\/contest\/\d+\/[A-Za-z0-9_]+(?:\?.*)?$/i;
 const NC_PRACTICE_URL_RE = /^https:\/\/www\.nowcoder\.com\/practice\/[0-9a-fA-F]+(?:\?.*)?$/i;
@@ -32,6 +34,7 @@ function showMsg(msg, isError = false) {
 
 function resolveScrapeMessageType(url) {
   if (CF_URL_RE.test(url) || CF_GROUP_URL_RE.test(url)) return CF_MESSAGE_TYPE;
+  if (ATCODER_TASK_URL_RE.test(url)) return ATCODER_MESSAGE_TYPE;
   if (NC_ACM_PROBLEM_URL_RE.test(url) || NC_ACM_CONTEST_URL_RE.test(url)) return NC_ACM_MESSAGE_TYPE;
   if (NC_PRACTICE_URL_RE.test(url)) return NC_PRACTICE_MESSAGE_TYPE;
   if (LUOGU_URL_RE.test(url)) return LUOGU_MESSAGE_TYPE;
