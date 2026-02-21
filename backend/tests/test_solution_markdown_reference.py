@@ -48,10 +48,10 @@ class SolutionMarkdownReferenceTests(unittest.TestCase):
         solution_path = Path(self.fm.save_solution_file(problem, "# Solution\n\nBody"))
         text = solution_path.read_text(encoding="utf-8")
 
-        self.assertNotIn("## Problem Markdown Reference", text)
+        self.assertIn("## Problem Markdown Reference(原题)", text)
         self.assertNotIn("<!-- problem-md-ref -->", text)
-        self.assertNotIn(
-            "- [Open original problem markdown](../problems/codeforces_1A.md)",
+        self.assertIn(
+            "- [Open original problem markdown(打开原题)](../problems/codeforces_1A.md)",
             text,
         )
         self.assertTrue(text.endswith("\n"))
@@ -69,7 +69,7 @@ class SolutionMarkdownReferenceTests(unittest.TestCase):
 
         problem_path = self.base / month_from_dt(old_created_at) / "problems" / "codeforces_2B.md"
         expected = os.path.relpath(problem_path, start=solution_path.parent).replace("\\", "/")
-        self.assertNotIn(f"- [Open original problem markdown]({expected})", text)
+        self.assertIn(f"- [Open original problem markdown(打开原题)]({expected})", text)
 
     def test_preserves_utf8_content(self) -> None:
         problem = self._make_problem(
@@ -100,9 +100,9 @@ class SolutionMarkdownReferenceTests(unittest.TestCase):
         self.assertEqual(second_path.name, "codeforces_dup-1__dup_2.md")
         self.assertEqual(third_path.name, "codeforces_dup-1__dup_3.md")
 
-        self.assertEqual(first_path.read_text(encoding="utf-8"), "# S1\n")
-        self.assertEqual(second_path.read_text(encoding="utf-8"), "# S2\n")
-        self.assertEqual(third_path.read_text(encoding="utf-8"), "# S3\n")
+        self.assertTrue(first_path.read_text(encoding="utf-8").endswith("# S1\n"))
+        self.assertTrue(second_path.read_text(encoding="utf-8").endswith("# S2\n"))
+        self.assertTrue(third_path.read_text(encoding="utf-8").endswith("# S3\n"))
 
 
 if __name__ == "__main__":

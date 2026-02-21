@@ -35,16 +35,19 @@ class UiSettingsAutostartTests(unittest.TestCase):
                 storage_base_dir=self.fm.get_storage_base_dir(),
                 autostart_enabled=True,
                 autostart_silent=True,
+                obsidian_mode_enabled=True,
             )
         )
 
         self.assertEqual(updated.ui.default_ac_language, AcLanguage.python)
         self.assertTrue(updated.ui.autostart_enabled)
         self.assertTrue(updated.ui.autostart_silent)
+        self.assertTrue(updated.ui.obsidian_mode_enabled)
 
         reloaded = self.fm.get_settings()
         self.assertTrue(reloaded.ui.autostart_enabled)
         self.assertTrue(reloaded.ui.autostart_silent)
+        self.assertTrue(reloaded.ui.obsidian_mode_enabled)
 
 
 if __name__ == "__main__":

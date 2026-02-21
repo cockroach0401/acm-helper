@@ -7,6 +7,7 @@ from pathlib import Path
 from ..services.ai_client import AIClient
 from ..services.solution_gen import SolutionGenerator
 from ..services.stats_gen import InsightGenerator
+from ..services.tag_gen import TagGenerator
 from ..services.task_runner import TaskRunner
 from ..services.translator import ProblemTranslator
 from ..storage.file_manager import FileManager
@@ -87,6 +88,7 @@ _solution_generator = SolutionGenerator(_ai_client)
 _task_runner = TaskRunner(_file_manager, _solution_generator)
 _problem_translator = ProblemTranslator(_ai_client)
 _insight_generator = InsightGenerator(_ai_client)
+_tag_generator = TagGenerator(_ai_client)
 
 
 def get_file_manager() -> FileManager:
@@ -107,3 +109,7 @@ def get_problem_translator() -> ProblemTranslator:
 
 def get_insight_generator() -> InsightGenerator:
     return _insight_generator
+
+
+def get_tag_generator() -> TagGenerator:
+    return _tag_generator

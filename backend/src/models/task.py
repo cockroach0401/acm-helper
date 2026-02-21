@@ -17,9 +17,18 @@ class TaskStatus(str, Enum):
     failed = "failed"
 
 
+class TaskType(str, Enum):
+    solution = "solution"
+    weekly_report = "weekly_report"
+    phased_report = "phased_report"
+
+
 class SolutionTaskRecord(BaseModel):
     task_id: str
-    problem_key: str
+    task_type: TaskType = TaskType.solution
+    problem_key: str = ""
+    report_type: str | None = None
+    report_target: str | None = None
     provider_name: str | None = None
     status: TaskStatus = TaskStatus.queued
     error_message: str | None = None

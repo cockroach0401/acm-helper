@@ -147,6 +147,7 @@ def _sync_ui_autostart_state(fm: FileManager):
         storage_base_dir=settings.ui.storage_base_dir,
         autostart_enabled=state.enabled,
         autostart_silent=state.silent,
+        obsidian_mode_enabled=settings.ui.obsidian_mode_enabled,
     )
     return fm.update_ui_settings(ui)
 
@@ -444,6 +445,9 @@ def update_ui_settings(
         storage_base_dir=next_storage_base,
         autostart_enabled=next_autostart_enabled,
         autostart_silent=next_autostart_silent,
+        obsidian_mode_enabled=(
+            req.obsidian_mode_enabled if req.obsidian_mode_enabled is not None else current.ui.obsidian_mode_enabled
+        ),
     )
     settings = fm.update_ui_settings(ui)
     return settings.model_dump(mode="json")

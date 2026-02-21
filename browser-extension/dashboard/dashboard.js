@@ -354,16 +354,23 @@ function renderTasks(items, overviewAi = null) {
       if (task.status === 'done' || task.status === 'succeeded') statusClass = 'status-completed';
       if (task.status === 'failed') statusClass = 'status-failed';
 
-      const problemNo = String(task.problem_key || '-').split(':').slice(1).join(':') || '-';
+      const taskType = String(task.task_type || 'solution');
+      const targetLabel = taskType === 'solution'
+        ? (String(task.problem_key || '-').split(':').slice(1).join(':') || '-')
+        : (task.report_target || '-');
       const providerName = String(task.provider_name || '').trim() || activeProviderName || '-';
+
+      const msgPrefix = taskType === 'weekly_report'
+        ? `[${t('task_type_weekly_report')}] `
+        : (taskType === 'phased_report' ? `[${t('task_type_phased_report')}] ` : '');
 
       return `
       <tr>
-        <td><span style="font-family:var(--font-mono); font-size:0.8rem;">${problemNo}</span></td>
+        <td><span style="font-family:var(--font-mono); font-size:0.8rem;">${targetLabel}</span></td>
         <td>${providerName}</td>
         <td><span class="status-badge ${statusClass}">${task.status}</span></td>
         <td style="word-break: break-word; min-width: 200px;">
-            ${task.error_message || task.output_path || '-'}
+            ${msgPrefix}${task.error_message || task.output_path || '-'}
         </td>
       </tr>`;
     })
@@ -405,6 +412,10 @@ function renderProblemList(items) {
 
     // Generate Sol
     actions.push(`<button class="btn btn-sm btn-secondary action-gen" data-key="${key}">${t('btn_generate')}</button>`);
+
+    // AI Auto Tag + Difficulty
+    const hasSolution = p.solution_status === 'done';
+    actions.push(`<button class="btn btn-sm btn-secondary action-auto-tag" data-s="${p.source}" data-i="${p.id}" data-has-sol="${hasSolution ? '1' : '0'}">${t('btn_auto_tag')}</button>`);
 
     // Delete
     actions.push(`<button class="btn btn-sm btn-danger action-del" data-s="${p.source}" data-i="${p.id}">${t('btn_delete')}</button>`);
@@ -449,6 +460,9 @@ function renderProblemList(items) {
   });
   tbody.querySelectorAll('.action-gen').forEach(btn => {
     btn.addEventListener('click', () => generateSolution(btn.dataset.key));
+  });
+  tbody.querySelectorAll('.action-auto-tag').forEach(btn => {
+    btn.addEventListener('click', () => autoTagProblem(btn.dataset.s, btn.dataset.i, btn.dataset.hasSol === '1'));
   });
   tbody.querySelectorAll('.action-del').forEach(btn => {
     btn.addEventListener('click', () => deleteProblem(btn.dataset.s, btn.dataset.i));
@@ -669,6 +683,43 @@ async function generateSolution(key) {
     });
   } catch (err) {
     toast(`${t('msg_task_failed')}: ${err.message}`);
+  }
+}
+
+async function autoTagProblem(source, id, hasSolution) {
+  if (!hasSolution) {
+    const ok = confirm(t('msg_confirm_auto_tag_without_solution'));
+    if (!ok) return;
+  }
+
+  try {
+    toast(t('msg_auto_tagging'));
+    const resp = await api(`/api/problems/${encodeURIComponent(source)}/${encodeURIComponent(id)}/auto-tag`, {
+      method: 'POST'
+    });
+
+    const record = resp?.record || {};
+    const tags = Array.isArray(record.tags) ? record.tags : [];
+    const difficulty = Number.isFinite(Number(record.difficulty)) ? Number(record.difficulty) : null;
+
+    const detailParts = [];
+    if (tags.length > 0) detailParts.push(tags.join(' / '));
+    if (difficulty !== null) detailParts.push(String(difficulty));
+
+    const doneMsg = detailParts.length > 0
+      ? `${t('msg_auto_tag_done')}: ${detailParts.join(' | ')}`
+      : t('msg_auto_tag_done');
+
+    if (resp?.notice) {
+      toast(`${doneMsg} | ${resp.notice}`);
+    } else {
+      toast(doneMsg);
+    }
+
+    await loadProblems();
+  } catch (err) {
+    const detail = extractApiErrorMessage(err);
+    toast(`${t('msg_error')}: ${detail || err.message}`);
   }
 }
 
@@ -1119,6 +1170,11 @@ function renderSettings(settings, preferredProfileId = '') {
     storageBaseDirEl.value = storageBaseDir;
     storageBaseDirEl.dataset.currentPath = storageBaseDir;
   }
+
+  const obsidianModeEl = $('#obsidian-mode-enabled');
+  if (obsidianModeEl) {
+    obsidianModeEl.checked = !!ui.obsidian_mode_enabled;
+  }
 }
 
 function renderTemplateVarsVisibility() {
@@ -1415,7 +1471,8 @@ async function saveAllSettings() {
   const previousStoragePath = (storageBaseDirEl?.dataset.currentPath || '').trim();
   const uiPayload = {
     default_ac_language: $('#default-ac-language').value,
-    storage_base_dir: (storageBaseDirEl?.value || '').trim()
+    storage_base_dir: (storageBaseDirEl?.value || '').trim(),
+    obsidian_mode_enabled: !!$('#obsidian-mode-enabled')?.checked
   };
 
   try {
@@ -1850,46 +1907,56 @@ function summarizeWeeklyData(weeklyData) {
 }
 
 // Reports V2
-async function handleReportAction(type, period) {
-  // type: weekly
-  // period: 2026-W06
-  if (!period) {
+function getPhasedWeekRange() {
+  const startWeek = $('#phased-start-week')?.value || '';
+  const endWeek = $('#phased-end-week')?.value || '';
+  return { startWeek, endWeek };
+}
+
+function reportPath(type, target, suffix = '') {
+  if (type === 'weekly') {
+    return `/api/reports/weekly/${encodeURIComponent(target)}${suffix}`;
+  }
+  if (type === 'phased') {
+    const [startWeek, endWeek] = String(target || '').split('__', 2);
+    return `/api/reports/phased/${encodeURIComponent(startWeek || '')}/${encodeURIComponent(endWeek || '')}${suffix}`;
+  }
+  throw new Error('unsupported report type');
+}
+
+async function handleReportAction(type, target) {
+  if (!target) {
     toast(t('msg_select_week'));
     return;
   }
 
-  if (type !== 'weekly') {
-    toast(`${t('msg_error')}: unsupported report type`);
-    return;
-  }
-
-  toast(`${t('msg_generating')} ${period}...`);
+  toast(`${t('msg_generating')} ${target}...`);
   try {
-    await api(`/api/reports/${type}/${period}/generate`, { method: 'POST' });
+    await api(reportPath(type, target, '/generate'), { method: 'POST' });
     toast(t('msg_report_generated'));
-    pollReportStatus(type, period);
+    pollReportStatus(type, target);
+    startPolling();
   } catch (err) {
     toast(`${t('msg_error')}: ${err.message}`);
   }
 }
 
-async function pollReportStatus(type, period) {
+async function pollReportStatus(type, target) {
   for (let i = 0; i < 20; i++) {
-    const data = await checkReportStatus(type, period);
+    const data = await checkReportStatus(type, target);
     if (!data) return;
     if (data.status === 'ready' || data.status === 'failed') return;
     await new Promise((resolve) => setTimeout(resolve, 1500));
   }
 }
 
-async function checkReportStatus(type, period) {
-  const el = $(`#status-${type}`); // status-weekly
+async function checkReportStatus(type, target) {
+  const el = $(`#status-${type}`);
   if (!el) return;
 
   el.textContent = 'Checking status...';
   try {
-    const data = await api(`/api/reports/${type}/${period}/status`);
-    // data.status: none | generating | ready | failed
+    const data = await api(reportPath(type, target, '/status'));
     let color = 'var(--text-muted)';
     if (data.status === 'ready') color = 'var(--accent-success)';
     if (data.status === 'failed') color = 'var(--accent-danger)';
@@ -1916,9 +1983,32 @@ async function viewWeeklyReport() {
   preview.textContent = t('msg_loading');
 
   try {
-    const data = await api(`/api/reports/weekly/${encodeURIComponent(week)}`);
+    const data = await api(reportPath('weekly', week));
     preview.textContent = data.content || t('msg_no_content');
     await checkReportStatus('weekly', week);
+  } catch (err) {
+    preview.textContent = '';
+    toast(`${t('msg_error')}: ${err.message}`);
+  }
+}
+
+async function viewPhasedReport() {
+  const { startWeek, endWeek } = getPhasedWeekRange();
+  if (!startWeek || !endWeek) {
+    toast(t('msg_select_week'));
+    return;
+  }
+
+  const target = `${startWeek}__${endWeek}`;
+  const preview = $('#phased-report-preview');
+  if (!preview) return;
+  preview.classList.remove('hidden');
+  preview.textContent = t('msg_loading');
+
+  try {
+    const data = await api(reportPath('phased', target));
+    preview.textContent = data.content || t('msg_no_content');
+    await checkReportStatus('phased', target);
   } catch (err) {
     preview.textContent = '';
     toast(`${t('msg_error')}: ${err.message}`);
@@ -2016,6 +2106,21 @@ async function init() {
 
   const btnViewWeekly = $('#btn-view-weekly');
   if (btnViewWeekly) btnViewWeekly.addEventListener('click', viewWeeklyReport);
+
+  const btnGenPhased = $('#btn-gen-phased');
+  if (btnGenPhased) {
+    btnGenPhased.addEventListener('click', () => {
+      const { startWeek, endWeek } = getPhasedWeekRange();
+      if (!startWeek || !endWeek) {
+        toast(t('msg_select_week'));
+        return;
+      }
+      handleReportAction('phased', `${startWeek}__${endWeek}`);
+    });
+  }
+
+  const btnViewPhased = $('#btn-view-phased');
+  if (btnViewPhased) btnViewPhased.addEventListener('click', viewPhasedReport);
 
   bind('#import-btn', importProblems);
   bind('#add-ai-provider-btn', addAiProvider);

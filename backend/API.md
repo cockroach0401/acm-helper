@@ -177,8 +177,8 @@ Base URL（默认）：`http://localhost:8000`
   },
   "pending": ["...ProblemRecord..."],
   "tasks": ["...TaskRecord..."],
-  "report": {
-    "month": "2026-02",
+  "insight": {
+    "target": "2026-W07",
     "status": "ready",
     "updated_at": "2026-02-06T10:30:00Z",
     "report_path": "...",
@@ -229,7 +229,10 @@ Base URL（默认）：`http://localhost:8000`
 ```json
 {
   "task_id": "d2d6...",
+  "task_type": "solution",
   "problem_key": "manual:A1",
+  "report_type": null,
+  "report_target": null,
   "status": "running",
   "error_message": null,
   "output_path": null,
@@ -240,6 +243,8 @@ Base URL（默认）：`http://localhost:8000`
 ```
 
 `status` 枚举：`queued | running | succeeded | failed`
+
+`task_type` 枚举：`solution | weekly_report | phased_report`
 
 ---
 
@@ -256,6 +261,39 @@ Base URL（默认）：`http://localhost:8000`
   "items": ["...ProblemRecord..."]
 }
 ```
+
+---
+
+## 5) 统计与报告
+
+### `POST /api/reports/weekly/{week}/generate`
+
+用途：触发某周周报生成（`week` 格式：`YYYY-Www`）。
+
+### `GET /api/reports/weekly/{week}/status`
+
+用途：查询周报状态（`none | generating | ready | failed`）。
+
+### `GET /api/reports/weekly/{week}`
+
+用途：读取周报内容。
+
+### `POST /api/reports/phased/{start_week}/{end_week}/generate`
+
+用途：触发阶段性报告生成。
+
+说明：
+- `start_week` 与 `end_week` 均为 `YYYY-Www`
+- 后端会先校验范围内的周报是否已存在；若缺失，返回 `400`。
+- 生成阶段性报告时，模板中的 `{{problem_list_json}}` 注入为已生成周报集合。
+
+### `GET /api/reports/phased/{start_week}/{end_week}/status`
+
+用途：查询阶段性报告状态。
+
+### `GET /api/reports/phased/{start_week}/{end_week}`
+
+用途：读取阶段性报告内容。
 
 ---
 

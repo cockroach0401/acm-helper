@@ -212,18 +212,18 @@ Query：
 
 ---
 
-## 3. ??????????
+## 3. 统计与报告
 
-### 3.1 ?????/?/???????
+### 3.1 日/周/月统计数据
 
 `GET /api/stats/charts`
 
-Query?
+Query：
 
-- `from_date=YYYY-MM-DD`????
-- `to_date=YYYY-MM-DD`????
+- `from_date=YYYY-MM-DD`（可选）
+- `to_date=YYYY-MM-DD`（可选）
 
-???
+响应：
 
 ```json
 {
@@ -235,7 +235,7 @@ Query?
 }
 ```
 
-`StatsPoint`?
+`StatsPoint`：
 
 ```json
 {
@@ -250,13 +250,54 @@ Query?
 
 ---
 
-### 3.2 ?????
+### 3.2 聚合序列
 
 `GET /api/stats/series?period=day|week|month`
 
 ---
 
-## 4. AI ????????
+### 3.3 周报接口
+
+- `POST /api/reports/weekly/{week}/generate`
+- `GET /api/reports/weekly/{week}/status`
+- `GET /api/reports/weekly/{week}`
+
+说明：
+- `week` 格式：`YYYY-Www`
+- 前端“周报生成”区域直接调用该组接口。
+
+---
+
+### 3.4 阶段性报告接口（起始周 + 截止周）
+
+- `POST /api/reports/phased/{start_week}/{end_week}/generate`
+- `GET /api/reports/phased/{start_week}/{end_week}/status`
+- `GET /api/reports/phased/{start_week}/{end_week}`
+
+说明：
+- `start_week`、`end_week` 均为 `YYYY-Www`
+- 生成前后端会校验范围内周报是否已存在，缺失时报 `400`
+- 阶段性报告提示词复用周报模板，仅把 `{{problem_list_json}}` 改为注入“已生成周报集合 JSON”
+
+---
+
+### 3.5 任务列表（含题解与报告任务混排）
+
+总览接口：`GET /api/dashboard/overview`
+
+返回 `tasks` 中每条任务新增字段：
+
+- `task_type`：`solution | weekly_report | phased_report`
+- `report_type`：报告任务时为 `weekly | phased`
+- `report_target`：报告目标（如 `2026-W08` 或 `2026-W07__2026-W08`）
+
+前端展示建议：
+- `solution` 使用 `problem_key`
+- 报告任务使用 `report_target`
+
+---
+
+## 4. AI 配置与模板
 
 ### 4.1 ????
 

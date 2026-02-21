@@ -15,12 +15,14 @@ from ..models.problem import (
     ProblemStatus,
     ProblemRecord,
     ProblemTranslateRequest,
+    ProblemAutoTagResponse,
     SolutionImageMeta,
     TranslationStatus,
 )
+from ..services.tag_gen import TagGenerator
 from ..services.translator import ProblemTranslator
 from ..storage.file_manager import FileManager
-from .shared import get_file_manager, get_problem_translator
+from .shared import get_file_manager, get_problem_translator, get_tag_generator
 
 router = APIRouter(prefix="/api/problems", tags=["problems"])
 
@@ -252,3 +254,40 @@ def update_problem_difficulty(
     if record is None:
         raise HTTPException(status_code=404, detail="Problem not found")
     return record
+
+
+@router.post("/{source}/{problem_id}/auto-tag", response_model=ProblemAutoTagResponse)
+async def auto_tag_problem(
+    source: str,
+    problem_id: str,
+    fm: FileManager = Depends(get_file_manager),
+    tag_generator: TagGenerator = Depends(get_tag_generator),
+) -> ProblemAutoTagResponse:
+    record = fm.get_problem(source, problem_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Problem not found")
+
+    solution_markdown = fm.read_solution_file(source, problem_id) or ""
+    used_solution = bool(solution_markdown.strip())
+
+    try:
+        settings = fm.get_settings()
+        tags, difficulty = await tag_generator.generate(record, settings.ai, solution_markdown=solution_markdown)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Auto-tag failed: {exc}")
+
+    updated = fm.update_problem_info(
+        source,
+        problem_id,
+        tags=tags,
+        difficulty=difficulty,
+        difficulty_set=True,
+    )
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Problem not found")
+
+    notice = None
+    if not used_solution:
+        notice = "当前题目暂无题解，建议先生成题解后再进行 AI 标签分类，可提升准确度。"
+
+    return ProblemAutoTagResponse(record=updated, used_solution=used_solution, notice=notice)

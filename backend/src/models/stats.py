@@ -30,6 +30,7 @@ class StatsSeriesResponse(BaseModel):
 
 class InsightType(str, Enum):
     weekly = "weekly"
+    phased = "phased"
 
 
 class InsightGenerateRequest(BaseModel):

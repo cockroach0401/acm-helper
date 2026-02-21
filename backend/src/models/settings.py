@@ -247,6 +247,7 @@ class UiSettings(BaseModel):
     storage_base_dir: str = ""
     autostart_enabled: bool = False
     autostart_silent: bool = True
+    obsidian_mode_enabled: bool = False
 
 
 class UiSettingsUpdateRequest(BaseModel):
@@ -254,6 +255,7 @@ class UiSettingsUpdateRequest(BaseModel):
     storage_base_dir: str | None = None
     autostart_enabled: bool | None = None
     autostart_silent: bool | None = None
+    obsidian_mode_enabled: bool | None = None
 
 
 class SettingsBundle(BaseModel):

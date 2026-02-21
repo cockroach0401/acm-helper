@@ -187,6 +187,7 @@
               <option value="codeforces">Codeforces</option>
               <option value="nowcoder">Nowcoder</option>
               <option value="luogu">Luogu</option>
+              <option value="atcoder">AtCoder</option>
             </select>
           </div>
         </div>
@@ -326,6 +327,28 @@
         </div>
         <div id="status-weekly" style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted);"></div>
         <pre id="weekly-report-preview" class="hidden" style="margin-top: 1rem;"></pre>
+      </div>
+
+      <div class="section-card">
+        <div class="section-header">
+          <h2 class="section-title" data-i18n="card_phased_report">Phased Report</h2>
+        </div>
+        <div class="card-grid" style="grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="form-group">
+            <label data-i18n="label_select_start_week">Start Week</label>
+            <input id="phased-start-week" type="week" />
+          </div>
+          <div class="form-group">
+            <label data-i18n="label_select_end_week">End Week</label>
+            <input id="phased-end-week" type="week" />
+          </div>
+        </div>
+        <div class="row-actions">
+          <button id="btn-gen-phased" class="btn" data-i18n="btn_generate">Generate</button>
+          <button id="btn-view-phased" class="btn btn-secondary" data-i18n="btn_view_report">View Report</button>
+        </div>
+        <div id="status-phased" style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted);"></div>
+        <pre id="phased-report-preview" class="hidden" style="margin-top: 1rem;"></pre>
       </div>
     </div>
 
@@ -470,6 +493,13 @@
             </div>
             <div class="helper-note" data-i18n="hint_storage_path_migrate">Switching storage path migrates all
               local data files.</div>
+          </div>
+          <div class="form-group">
+            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+              <input id="obsidian-mode-enabled" type="checkbox" />
+              <span data-i18n="label_obsidian_mode">Obsidian Mode</span>
+            </label>
+            <div class="helper-note" data-i18n="hint_obsidian_mode">When enabled, both problem and solution markdown files include YAML frontmatter tags for Obsidian.</div>
           </div>
           <div class="row-actions">
             <button id="save-settings-btn" class="btn" data-i18n="btn_save_settings">Save Settings</button>

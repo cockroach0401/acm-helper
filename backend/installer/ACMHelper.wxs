@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+
+  <Product
+    Id="*"
+    Name="ACM Helper"
+    Language="1033"
+    Version="1.0.0.0"
+    Manufacturer="ACM Helper"
+    UpgradeCode="A2E6A7E4-6F43-4B74-9E40-F1A3A4C37B12">
+
+    <Package
+      InstallerVersion="200"
+      Compressed="yes"
+      InstallScope="perUser"
+      Description="ACM Helper Installer"
+      Manufacturer="ACM Helper"/>
+
+    <MajorUpgrade
+      AllowDowngrades="yes"/>
+
+    <MediaTemplate EmbedCab="yes"/>
+
+    <Feature Id="ProductFeature" Title="ACM Helper" Level="1">
+      <ComponentRef Id="MainExe"/>
+      <ComponentRef Id="MainIcon"/>
+      <ComponentRef Id="DesktopShortcut"/>
+      <ComponentRef Id="StartMenuShortcut"/>
+    </Feature>
+
+    <UIRef Id="WixUI_InstallDir"/>
+    <UIRef Id="WixUI_ErrorProgressText"/>
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER"/>
+
+    <Icon Id="ACMHelperIcon" SourceFile="$(var.IconPath)"/>
+    <Property Id="ARPPRODUCTICON" Value="ACMHelperIcon"/>
+
+  </Product>
+
+  <Fragment>
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="LocalAppDataFolder">
+        <Directory Id="INSTALLFOLDER" Name="ACM Helper"/>
+      </Directory>
+      <Directory Id="DesktopFolder"/>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="StartMenuDir" Name="ACM Helper"/>
+      </Directory>
+    </Directory>
+  </Fragment>
+
+  <Fragment>
+    <Component Id="MainExe" Guid="B3F7E8A1-4C2D-4F9B-A1E6-7D8C9F0A1B2C" Directory="INSTALLFOLDER">
+      <File Id="ACMHelperExe" Source="$(var.SourceDir)\ACMHelper.exe"/>
+      <RegistryValue Root="HKCU" Key="Software\ACM Helper" Name="ExePath"
+        Type="string" Value="[INSTALLFOLDER]ACMHelper.exe" KeyPath="yes"/>
+      <RemoveFolder Id="RemoveInstallFolder" On="uninstall"/>
+    </Component>
+
+    <Component Id="MainIcon" Guid="C4A8F9B2-5D3E-4A0C-B2F7-8E9D0A1B3C4D" Directory="INSTALLFOLDER">
+      <File Id="IconFile" Source="$(var.IconPath)"/>
+      <RegistryValue Root="HKCU" Key="Software\ACM Helper" Name="IconPath"
+        Type="string" Value="[INSTALLFOLDER]icon.ico" KeyPath="yes"/>
+    </Component>
+
+    <Component Id="DesktopShortcut" Guid="*" Directory="DesktopFolder">
+      <Shortcut
+        Id="DesktopShortcutLink"
+        Name="ACM Helper"
+        Target="[INSTALLFOLDER]ACMHelper.exe"
+        Icon="ACMHelperIcon"
+        WorkingDirectory="INSTALLFOLDER"/>
+      <RegistryValue Root="HKCU" Key="Software\ACM Helper" Name="DesktopShortcut"
+        Type="integer" Value="1" KeyPath="yes"/>
+    </Component>
+
+    <Component Id="StartMenuShortcut" Guid="*" Directory="StartMenuDir">
+      <Shortcut
+        Id="StartMenuShortcutLink"
+        Name="ACM Helper"
+        Target="[INSTALLFOLDER]ACMHelper.exe"
+        Icon="ACMHelperIcon"
+        WorkingDirectory="INSTALLFOLDER"/>
+      <RemoveFolder Id="RemoveStartMenuDir" On="uninstall"/>
+      <RegistryValue Root="HKCU" Key="Software\ACM Helper" Name="StartMenuShortcut"
+        Type="integer" Value="1" KeyPath="yes"/>
+    </Component>
+  </Fragment>
+
+</Wix>

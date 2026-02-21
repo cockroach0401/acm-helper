@@ -23,7 +23,7 @@ from ..models.problem import (
 )
 from ..models.settings import AIProfile, AIProvider, AISettings, PromptSettings, SettingsBundle, UiSettings
 from ..models.solution import ReportStatusResponse
-from ..models.task import SolutionTaskRecord, TaskStatus
+from ..models.task import SolutionTaskRecord, TaskStatus, TaskType
 
 
 def now_utc() -> datetime:
@@ -177,6 +177,65 @@ class FileManager:
                 return candidate
             idx += 1
 
+    def _yaml_escape(self, value: str) -> str:
+        text = str(value or "")
+        return json.dumps(text, ensure_ascii=False)
+
+    def _build_problem_frontmatter(self, record: ProblemRecord) -> str:
+        lines = ["---"]
+        if record.tags:
+            lines.append("tags:")
+            for tag in record.tags:
+                lines.append(f"  - {self._yaml_escape(tag)}")
+        else:
+            lines.append("tags: []")
+
+        lines.extend(
+            [
+                f"source: {self._yaml_escape(record.source)}",
+                f"problem_id: {self._yaml_escape(record.id)}",
+                f"title: {self._yaml_escape(record.title)}",
+                f"original_url: {self._yaml_escape(record.url)}",
+                f"status: {self._yaml_escape(record.status.value)}",
+            ]
+        )
+        if record.difficulty is not None:
+            lines.append(f"difficulty: {record.difficulty}")
+        lines.extend(
+            [
+                f"created_at: {self._yaml_escape(record.created_at.isoformat())}",
+                f"updated_at: {self._yaml_escape(record.updated_at.isoformat())}",
+                "---",
+                "",
+            ]
+        )
+        return "\n".join(lines)
+
+    def _build_solution_frontmatter(self, record: ProblemRecord) -> str:
+        tags = list(record.tags)
+        if "题解" not in tags:
+            tags.append("题解")
+
+        lines = ["---"]
+        if tags:
+            lines.append("tags:")
+            for tag in tags:
+                lines.append(f"  - {self._yaml_escape(tag)}")
+        else:
+            lines.append("tags: []")
+
+        lines.extend(
+            [
+                f"source: {self._yaml_escape(record.source)}",
+                f"problem_id: {self._yaml_escape(record.id)}",
+                f"title: {self._yaml_escape(record.title)}",
+                "type: solution",
+                "---",
+                "",
+            ]
+        )
+        return "\n".join(lines)
+
     def _build_solution_markdown(self, record: ProblemRecord, content: str, solution_path: Path) -> str:
         body = (content or "").rstrip("\n")
 
@@ -184,7 +243,25 @@ class FileManager:
         if not problem_md_path.exists():
             problem_md_path.write_text(self._build_problem_markdown(record), encoding="utf-8")
 
-        return f"{body}\n" if body else ""
+        relative_problem_md = os.path.relpath(problem_md_path, start=solution_path.parent).replace("\\", "/")
+        reference_block = "\n".join(
+            [
+                "## Problem Markdown Reference(原题)",
+                f"- [Open original problem markdown(打开原题)]({relative_problem_md})",
+                "",
+            ]
+        )
+
+        settings = self.get_settings()
+        if settings.ui.obsidian_mode_enabled:
+            frontmatter = self._build_solution_frontmatter(record)
+            if body:
+                return f"{frontmatter}{reference_block}{body}\n"
+            return f"{frontmatter}{reference_block}"
+
+        if body:
+            return f"{reference_block}{body}\n"
+        return f"{reference_block}"
 
     def _build_problem_markdown(self, record: ProblemRecord) -> str:
         tags = ", ".join(record.tags) if record.tags else ""
@@ -261,14 +338,11 @@ class FileManager:
         else:
             lines.append("(empty)")
 
-        lines.extend(
-            [
-                "",
-                "<!-- TODO(scraper): after future scraping flow completes, prompt user to submit AC code immediately. -->",
-                "<!-- TODO(scraper): reuse /api/problems/{source}/{id}/ac-code endpoint for popup submit action. -->",
-            ]
-        )
-        return "\n".join(lines).rstrip() + "\n"
+        markdown = "\n".join(lines).rstrip() + "\n"
+        settings = self.get_settings()
+        if settings.ui.obsidian_mode_enabled:
+            return self._build_problem_frontmatter(record) + markdown
+        return markdown
 
     def _normalize_ac_language(self, language: str, default_language: str = "cpp") -> str:
         value = (language or "").strip().lower()
@@ -1007,7 +1081,29 @@ class FileManager:
         with self._lock:
             tasks = self._read_json(self.tasks_file)
             task_id = uuid.uuid4().hex
-            record = SolutionTaskRecord(task_id=task_id, problem_key=key, provider_name=provider_name)
+            record = SolutionTaskRecord(
+                task_id=task_id,
+                task_type=TaskType.solution,
+                problem_key=key,
+                provider_name=provider_name,
+            )
+            tasks[task_id] = record.model_dump(mode="json")
+            self._write_json(self.tasks_file, tasks)
+            return record
+
+    def create_report_task(self, report_type: str, report_target: str, provider_name: str | None = None) -> SolutionTaskRecord:
+        task_type = TaskType.weekly_report if report_type == "weekly" else TaskType.phased_report
+        with self._lock:
+            tasks = self._read_json(self.tasks_file)
+            task_id = uuid.uuid4().hex
+            record = SolutionTaskRecord(
+                task_id=task_id,
+                task_type=task_type,
+                problem_key="",
+                report_type=report_type,
+                report_target=report_target,
+                provider_name=provider_name,
+            )
             tasks[task_id] = record.model_dump(mode="json")
             self._write_json(self.tasks_file, tasks)
             return record
@@ -1412,6 +1508,7 @@ class FileManager:
                 storage_base_dir=(ui_settings.storage_base_dir or "").strip() or self.get_storage_base_dir(),
                 autostart_enabled=ui_settings.autostart_enabled,
                 autostart_silent=ui_settings.autostart_silent,
+                obsidian_mode_enabled=ui_settings.obsidian_mode_enabled,
             )
             self._write_json(self.settings_file, current.model_dump(mode="json"))
             return current

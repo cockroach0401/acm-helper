@@ -168,6 +168,12 @@ class ProblemDeleteResponse(BaseModel):
     removed_tasks: int = 0
 
 
+class ProblemAutoTagResponse(BaseModel):
+    record: ProblemRecord
+    used_solution: bool = False
+    notice: str | None = None
+
+
 class ProblemListResponse(BaseModel):
     month: str | None = None
     source: str | None = None
