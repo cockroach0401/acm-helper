@@ -13,7 +13,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.models.problem import ProblemInput
-from src.routes.problems import auto_tag_problem
+from src.routes.problems import auto_tag_problem, enqueue_auto_tag_task
 from src.services.tag_gen import TagGenerator
 from src.storage.file_manager import FileManager
 
@@ -26,6 +26,15 @@ class _FakeAIClient:
     async def generate_text(self, prompt: str, ai_settings) -> str:
         self.prompts.append(prompt)
         return self.response
+
+
+class _FakeTaskRunner:
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    async def enqueue_ai_tag_task(self, problem_key: str) -> str:
+        self.calls.append(problem_key)
+        return "task-auto-tag-1"
 
 
 class AutoTagTests(unittest.TestCase):
@@ -127,6 +136,37 @@ class AutoTagTests(unittest.TestCase):
 
         with self.assertRaises(HTTPException) as ctx:
             asyncio.run(auto_tag_problem("codeforces", "404", fm=self.fm, tag_generator=tag_generator))
+
+        self.assertEqual(ctx.exception.status_code, 404)
+
+    def test_auto_tag_task_endpoint_enqueues_task(self) -> None:
+        self._insert_problem(source="codeforces", pid="2A")
+        fake_runner = _FakeTaskRunner()
+
+        resp = asyncio.run(
+            enqueue_auto_tag_task(
+                "codeforces",
+                "2A",
+                fm=self.fm,
+                task_runner=fake_runner,
+            )
+        )
+
+        self.assertEqual(resp.task_ids, ["task-auto-tag-1"])
+        self.assertEqual(fake_runner.calls, ["codeforces:2A"])
+
+    def test_auto_tag_task_endpoint_problem_not_found(self) -> None:
+        fake_runner = _FakeTaskRunner()
+
+        with self.assertRaises(HTTPException) as ctx:
+            asyncio.run(
+                enqueue_auto_tag_task(
+                    "codeforces",
+                    "404",
+                    fm=self.fm,
+                    task_runner=fake_runner,
+                )
+            )
 
         self.assertEqual(ctx.exception.status_code, 404)
 

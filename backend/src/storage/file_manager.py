@@ -1091,6 +1091,20 @@ class FileManager:
             self._write_json(self.tasks_file, tasks)
             return record
 
+    def create_ai_tag_task(self, key: str, provider_name: str | None = None) -> SolutionTaskRecord:
+        with self._lock:
+            tasks = self._read_json(self.tasks_file)
+            task_id = uuid.uuid4().hex
+            record = SolutionTaskRecord(
+                task_id=task_id,
+                task_type=TaskType.ai_tag,
+                problem_key=key,
+                provider_name=provider_name,
+            )
+            tasks[task_id] = record.model_dump(mode="json")
+            self._write_json(self.tasks_file, tasks)
+            return record
+
     def create_report_task(self, report_type: str, report_target: str, provider_name: str | None = None) -> SolutionTaskRecord:
         task_type = TaskType.weekly_report if report_type == "weekly" else TaskType.phased_report
         with self._lock:

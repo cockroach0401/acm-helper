@@ -197,7 +197,7 @@
             <thead>
               <tr>
                 <th data-i18n="col_title">Title</th>
-                <th data-i18n="col_source">Source</th>
+                <th data-i18n="col_solution_status">Solution Status</th>
                 <th data-i18n="col_status">Status</th>
                 <th data-i18n="col_translation">Translation</th>
                 <th data-i18n="col_action">Action</th>
@@ -308,6 +308,18 @@
               <!-- JS Injected SVG -->
             </div>
             <div id="weekly-visual-summary" class="helper-note" style="margin-top:0.5rem;"></div>
+          </div>
+
+          <!-- Chart 3: Tags Solved -->
+          <div>
+            <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);"
+              data-i18n="chart_tags_solved">Tags Solved</h3>
+            <div id="chart-tags-donut" class="chart-tags-container">
+              <div id="chart-tags-ring" class="chart-tags-ring">
+                <div style="text-align:center; padding: 2rem; color: var(--text-muted);">Loading...</div>
+              </div>
+              <div id="chart-tags-legend" class="chart-tags-legend"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -495,7 +507,7 @@
               local data files.</div>
           </div>
           <div class="form-group">
-            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+            <label class="obsidian-mode-toggle">
               <input id="obsidian-mode-enabled" type="checkbox" />
               <span data-i18n="label_obsidian_mode">Obsidian Mode</span>
             </label>

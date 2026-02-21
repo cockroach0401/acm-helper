@@ -19,6 +19,7 @@ class TaskStatus(str, Enum):
 
 class TaskType(str, Enum):
     solution = "solution"
+    ai_tag = "ai_tag"
     weekly_report = "weekly_report"
     phased_report = "phased_report"
 

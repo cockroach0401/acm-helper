@@ -85,10 +85,10 @@ if is_storage_configured():
 _file_manager = FileManager(_BASE_DIR)
 _ai_client = AIClient()
 _solution_generator = SolutionGenerator(_ai_client)
-_task_runner = TaskRunner(_file_manager, _solution_generator)
+_tag_generator = TagGenerator(_ai_client)
+_task_runner = TaskRunner(_file_manager, _solution_generator, _tag_generator)
 _problem_translator = ProblemTranslator(_ai_client)
 _insight_generator = InsightGenerator(_ai_client)
-_tag_generator = TagGenerator(_ai_client)
 
 
 def get_file_manager() -> FileManager:

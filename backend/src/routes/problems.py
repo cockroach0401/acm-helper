@@ -19,10 +19,12 @@ from ..models.problem import (
     SolutionImageMeta,
     TranslationStatus,
 )
+from ..models.task import CreateTaskResponse
 from ..services.tag_gen import TagGenerator
+from ..services.task_runner import TaskRunner
 from ..services.translator import ProblemTranslator
 from ..storage.file_manager import FileManager
-from .shared import get_file_manager, get_problem_translator, get_tag_generator
+from .shared import get_file_manager, get_problem_translator, get_tag_generator, get_task_runner
 
 router = APIRouter(prefix="/api/problems", tags=["problems"])
 
@@ -254,6 +256,21 @@ def update_problem_difficulty(
     if record is None:
         raise HTTPException(status_code=404, detail="Problem not found")
     return record
+
+
+@router.post("/{source}/{problem_id}/auto-tag/task", response_model=CreateTaskResponse)
+async def enqueue_auto_tag_task(
+    source: str,
+    problem_id: str,
+    fm: FileManager = Depends(get_file_manager),
+    task_runner: TaskRunner = Depends(get_task_runner),
+) -> CreateTaskResponse:
+    record = fm.get_problem(source, problem_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Problem not found")
+
+    task_id = await task_runner.enqueue_ai_tag_task(record.key())
+    return CreateTaskResponse(task_ids=[task_id])
 
 
 @router.post("/{source}/{problem_id}/auto-tag", response_model=ProblemAutoTagResponse)

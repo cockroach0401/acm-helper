@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import logging
+from collections import Counter
 from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,6 +15,7 @@ from ..storage.file_manager import FileManager
 from .shared import get_file_manager, get_insight_generator
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
+logger = logging.getLogger(__name__)
 
 
 def _today_utc() -> date:
@@ -97,12 +100,41 @@ def get_chart_series(
     weekly = build_stats_series(problems, period=StatsPeriod.week, from_date=start, to_date=end)
     monthly = build_stats_series(problems, period=StatsPeriod.month, from_date=start, to_date=end)
 
+    tag_counter: Counter[str] = Counter()
+    solved_count = 0
+    solved_with_tags_count = 0
+    for p in problems:
+        if getattr(p.status, "value", p.status) != "solved":
+            continue
+        solved_count += 1
+
+        cleaned_tags = [str(raw_tag).strip() for raw_tag in p.tags if str(raw_tag).strip()]
+        if cleaned_tags:
+            solved_with_tags_count += 1
+        for tag in cleaned_tags:
+            tag_counter[tag] += 1
+
+    logger.warning(
+        "[stats/charts] total=%s solved=%s solved_with_tags=%s unique_tags=%s top5=%s",
+        len(problems),
+        solved_count,
+        solved_with_tags_count,
+        len(tag_counter),
+        tag_counter.most_common(5),
+    )
+
+    tags_distribution = [
+        {"tag": tag, "count": count}
+        for tag, count in sorted(tag_counter.items(), key=lambda item: (-item[1], item[0].lower()))
+    ]
+
     return {
         "from_date": start,
         "to_date": end,
         "daily": daily.points,
         "weekly": weekly.points,
         "monthly": monthly.points,
+        "tags_distribution": tags_distribution,
     }
 
 

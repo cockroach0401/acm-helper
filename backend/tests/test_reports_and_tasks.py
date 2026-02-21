@@ -14,7 +14,9 @@ if str(ROOT) not in sys.path:
 
 from src.models.problem import ProblemInput, ProblemStatus
 from src.models.stats import InsightGenerateRequest, InsightType
-from src.routes.stats import generate_insight
+from src.models.task import TaskStatus
+from src.routes.stats import generate_insight, get_chart_series
+from src.services.task_runner import TaskRunner
 from src.storage.file_manager import FileManager
 
 
@@ -25,6 +27,16 @@ class _DummyInsightGenerator:
     async def generate(self, prompt: str, ai_settings) -> str:
         self.prompts.append(prompt)
         return "# generated report\n"
+
+
+class _DummySolutionGenerator:
+    async def generate(self, *args, **kwargs) -> str:  # pragma: no cover
+        return ""
+
+
+class _DummyTagGenerator:
+    async def generate(self, *args, **kwargs):
+        return ["动态规划", "贪心"], 1700
 
 
 class ReportsAndTasksTests(unittest.TestCase):
@@ -95,6 +107,72 @@ class ReportsAndTasksTests(unittest.TestCase):
         self.assertNotIn("{{problem_list_json}}", prompt)
         self.assertIn("weekly report content 1", prompt)
         self.assertIn("weekly report content 2", prompt)
+
+
+    def test_ai_tag_task_created_and_completed(self) -> None:
+        self.fm.upsert_problems(
+            [
+                ProblemInput(
+                    source="codeforces",
+                    id="3A",
+                    title="Tag Task Demo",
+                    content="demo",
+                )
+            ]
+        )
+
+        runner = TaskRunner(
+            self.fm,
+            _DummySolutionGenerator(),
+            _DummyTagGenerator(),
+        )
+
+        task_id = asyncio.run(runner.enqueue_ai_tag_task("codeforces:3A"))
+
+        async def _wait_done() -> None:
+            for _ in range(50):
+                task = self.fm.get_task(task_id)
+                if task and task.status in {TaskStatus.succeeded, TaskStatus.failed}:
+                    return
+                await asyncio.sleep(0.02)
+
+        asyncio.run(_wait_done())
+
+        task = self.fm.get_task(task_id)
+        self.assertIsNotNone(task)
+        assert task is not None
+        self.assertEqual(task.task_type.value, "ai_tag")
+        self.assertEqual(task.status, TaskStatus.succeeded)
+        self.assertEqual(task.problem_key, "codeforces:3A")
+
+        updated = self.fm.get_problem("codeforces", "3A")
+        self.assertIsNotNone(updated)
+        assert updated is not None
+        self.assertEqual(updated.tags, ["动态规划", "贪心"])
+        self.assertEqual(updated.difficulty, 1700)
+
+
+    def test_stats_charts_include_tags_distribution_for_solved(self) -> None:
+        self.fm.upsert_problems(
+            [
+                ProblemInput(source="codeforces", id="1A", title="A", status=ProblemStatus.solved, tags=["greedy", "math"]),
+                ProblemInput(source="codeforces", id="2A", title="B", status=ProblemStatus.solved, tags=["math", "dp"]),
+                ProblemInput(source="luogu", id="P1001", title="C", status=ProblemStatus.attempted, tags=["graph"]),
+            ]
+        )
+
+        data = get_chart_series(fm=self.fm)
+        tags_distribution = data.get("tags_distribution")
+
+        self.assertIsInstance(tags_distribution, list)
+        self.assertEqual(
+            tags_distribution,
+            [
+                {"tag": "math", "count": 2},
+                {"tag": "dp", "count": 1},
+                {"tag": "greedy", "count": 1},
+            ],
+        )
 
 
 if __name__ == "__main__":

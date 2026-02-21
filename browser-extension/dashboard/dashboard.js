@@ -17,6 +17,12 @@ let isWeeklyTemplateVarsOpen = false;
 
 const ALLOWED_AC_LANGUAGES = ['c', 'cpp', 'python', 'java'];
 const ALLOWED_PROMPT_STYLES = ['custom', 'rigorous', 'intuitive', 'concise'];
+const TAG_CHART_COLORS = [
+  '#f07f73', '#ea6e9f', '#c06ad7', '#9b7de2', '#7f8ddf',
+  '#71b8dd', '#66c4de', '#64d0d3', '#66c4b9', '#84d58a',
+  '#b4e27f', '#e5ea78', '#ece873', '#ecea5b', '#f0cf58',
+  '#f3a067', '#f07c72'
+];
 
 const SOLUTION_TEMPLATE_VARIABLES = [
   '{{source}}',
@@ -355,14 +361,15 @@ function renderTasks(items, overviewAi = null) {
       if (task.status === 'failed') statusClass = 'status-failed';
 
       const taskType = String(task.task_type || 'solution');
-      const targetLabel = taskType === 'solution'
+      const targetLabel = (taskType === 'solution' || taskType === 'ai_tag')
         ? (String(task.problem_key || '-').split(':').slice(1).join(':') || '-')
         : (task.report_target || '-');
       const providerName = String(task.provider_name || '').trim() || activeProviderName || '-';
 
-      const msgPrefix = taskType === 'weekly_report'
-        ? `[${t('task_type_weekly_report')}] `
-        : (taskType === 'phased_report' ? `[${t('task_type_phased_report')}] ` : '');
+      let msgPrefix = '';
+      if (taskType === 'weekly_report') msgPrefix = `[${t('task_type_weekly_report')}] `;
+      if (taskType === 'phased_report') msgPrefix = `[${t('task_type_phased_report')}] `;
+      if (taskType === 'ai_tag') msgPrefix = `[${t('task_type_ai_tag')}] `;
 
       return `
       <tr>
@@ -394,10 +401,22 @@ function renderProblemList(items) {
     const isTranslated = isCf && transStatus === 'done';
     const key = `${p.source}:${p.id}`;
     const safeKey = key.replace(/[^a-zA-Z0-9]/g, '-');
+    const tags = Array.isArray(p.tags) ? p.tags.filter(Boolean) : [];
 
     const transBadge = isTranslated
       ? `<span class="status-badge status-completed">${t('translated_done')}</span>`
       : '';
+
+    const solutionStatus = p.solution_status || 'none';
+    const solutionStatusClass = {
+      done: 'completed',
+      running: 'warning',
+      queued: 'pending',
+      failed: 'failed',
+      none: 'pending'
+    }[solutionStatus] || 'pending';
+    const solutionStatusText = t(`solution_status_${solutionStatus}`) || solutionStatus;
+    const solutionBadge = `<span class="status-badge status-${solutionStatusClass}">${solutionStatusText}</span>`;
 
     // Actions
     let actions = [];
@@ -428,19 +447,24 @@ function renderProblemList(items) {
       ? `<a class="problem-link" href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeTitle || '-'}</a>`
       : (safeTitle || '-');
 
+    const tagsHtml = tags.length
+      ? `<div class="problem-tags">${tags.map(tag => `<span class="problem-tag-chip" title="${escapeHtml(tag)}">${escapeHtml(tag)}</span>`).join('')}</div>`
+      : `<div class="problem-tags problem-tags-empty">-</div>`;
+
     return `
       <tr class="problem-row">
          <td>
             <div style="font-weight:600; color:var(--text-primary); display:flex; align-items:center;">
                 ${titleHtml} ${diffBadge}
             </div>
-            <div style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);">${p.id}</div>
+            <div class="problem-subline">${escapeHtml(p.source)}:${escapeHtml(String(p.id || ''))}</div>
+            ${tagsHtml}
          </td>
-         <td>${p.source}</td>
+         <td>${solutionBadge}</td>
          <td><span class="status-badge status-${p.status === 'solved' ? 'completed' : (p.status === 'attempted' ? 'warning' : 'pending')}">${t('status_' + p.status) || p.status}</span></td>
          <td>${transBadge}</td>
-         <td style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-            ${actions.join('')}
+         <td class="problem-actions-cell">
+            <div class="problem-actions">${actions.join('')}</div>
          </td>
       </tr>
       <tr class="edit-row hidden" id="edit-${safeKey}">
@@ -513,6 +537,7 @@ async function renderInlineForm(container, source, id) {
     ).join('');
 
     const safeKey = `${source}:${id}`.replace(/[^a-zA-Z0-9]/g, '-');
+    const tagsValue = Array.isArray(details.tags) ? details.tags.join(', ') : '';
 
     container.innerHTML = `
         <div class="inline-form-container" style="background:var(--bg-card-hover); padding:1rem; border-radius:8px;">
@@ -531,6 +556,10 @@ async function renderInlineForm(container, source, id) {
             <div class="form-group">
                 <label style="font-size:0.8rem">${t('label_reflection')}</label>
                 <textarea id="edit-reflection-${safeKey}" class="code-editor" rows="2" placeholder="${t('placeholder_reflection')}">${details.reflection || ''}</textarea>
+            </div>
+            <div class="form-group">
+                <label style="font-size:0.8rem">${t('label_import_tags')}</label>
+                <input id="edit-tags-${safeKey}" type="text" class="form-input-sm" value="${escapeHtml(tagsValue)}" placeholder="${t('placeholder_import_tags')}">
             </div>
             <div class="form-group">
                 <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
@@ -588,6 +617,11 @@ async function saveInlineDetails(source, id, safeKey) {
   const reflection = $(`#edit-reflection-${safeKey}`).value;
   const code = $(`#edit-code-${safeKey}`).value;
   const language = $(`#edit-lang-${safeKey}`).value;
+  const tagsRaw = ($(`#edit-tags-${safeKey}`)?.value || '').trim();
+  const tags = [...new Set(tagsRaw
+    .split(/[\n,，]/)
+    .map(v => v.trim())
+    .filter(Boolean))];
 
   const base = `/api/problems/${encodeURIComponent(source)}/${encodeURIComponent(id)}`;
   const promises = [];
@@ -608,6 +642,12 @@ async function saveInlineDetails(source, id, safeKey) {
   promises.push(api(`${base}/reflection`, {
     method: 'PUT',
     body: JSON.stringify({ reflection })
+  }));
+
+  // Tags
+  promises.push(api(base, {
+    method: 'PUT',
+    body: JSON.stringify({ tags })
   }));
 
   // Code
@@ -693,30 +733,20 @@ async function autoTagProblem(source, id, hasSolution) {
   }
 
   try {
-    toast(t('msg_auto_tagging'));
-    const resp = await api(`/api/problems/${encodeURIComponent(source)}/${encodeURIComponent(id)}/auto-tag`, {
+    toast(t('msg_auto_tag_task_creating'));
+    const resp = await api(`/api/problems/${encodeURIComponent(source)}/${encodeURIComponent(id)}/auto-tag/task`, {
       method: 'POST'
     });
 
-    const record = resp?.record || {};
-    const tags = Array.isArray(record.tags) ? record.tags : [];
-    const difficulty = Number.isFinite(Number(record.difficulty)) ? Number(record.difficulty) : null;
-
-    const detailParts = [];
-    if (tags.length > 0) detailParts.push(tags.join(' / '));
-    if (difficulty !== null) detailParts.push(String(difficulty));
-
-    const doneMsg = detailParts.length > 0
-      ? `${t('msg_auto_tag_done')}: ${detailParts.join(' | ')}`
-      : t('msg_auto_tag_done');
-
-    if (resp?.notice) {
-      toast(`${doneMsg} | ${resp.notice}`);
+    const taskId = Array.isArray(resp?.task_ids) ? String(resp.task_ids[0] || '') : '';
+    if (taskId) {
+      toast(`${t('msg_auto_tag_task_queued')} #${taskId.slice(0, 8)}`);
     } else {
-      toast(doneMsg);
+      toast(t('msg_auto_tag_task_queued'));
     }
 
-    await loadProblems();
+    startPolling();
+    await loadOverview();
   } catch (err) {
     const detail = extractApiErrorMessage(err);
     toast(`${t('msg_error')}: ${detail || err.message}`);
@@ -1733,11 +1763,22 @@ async function saveMetadata() {
 async function loadStatsCharts() {
   const heatmapContainer = $('#chart-activity-heatmap');
   const weeklyContainer = $('#chart-weekly-bar');
+  const tagsRingContainer = $('#chart-tags-ring');
+  const tagsLegendContainer = $('#chart-tags-legend');
   const rangeSelector = $('#heatmap-mode');
 
   if (!heatmapContainer) return; // Not on view
 
   heatmapContainer.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Loading...</div>`;
+  if (weeklyContainer) {
+    weeklyContainer.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Loading...</div>`;
+  }
+  if (tagsRingContainer) {
+    tagsRingContainer.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">Loading...</div>`;
+  }
+  if (tagsLegendContainer) {
+    tagsLegendContainer.innerHTML = '';
+  }
 
   try {
     let query = '';
@@ -1760,12 +1801,17 @@ async function loadStatsCharts() {
     }
 
     const data = await api(`/api/stats/charts${query}`);
-    // data: { daily: [], weekly: [], monthly: ..., from_date, to_date }
+    // data: { daily: [], weekly: [], monthly: ..., from_date, to_date, tags_distribution }
     renderActivityHeatmap(data.daily || [], data.from_date, data.to_date);
     renderWeeklyBarChart(data.weekly || []);
     summarizeWeeklyData(data.weekly || []);
+    renderTagsDonutChart(data.tags_distribution || []);
   } catch (err) {
-    heatmapContainer.innerText = 'Err: ' + err.message;
+    const message = 'Err: ' + err.message;
+    heatmapContainer.innerText = message;
+    if (weeklyContainer) weeklyContainer.innerText = message;
+    if (tagsRingContainer) tagsRingContainer.innerText = message;
+    if (tagsLegendContainer) tagsLegendContainer.innerHTML = '';
   }
 }
 
@@ -1904,6 +1950,81 @@ function summarizeWeeklyData(weeklyData) {
     : '-';
 
   summaryEl.textContent = `${t('weekly_summary_total')}: ${totals.solved} | ${t('weekly_summary_active_weeks')}: ${activeWeeks}/${data.length} | ${t('weekly_summary_best_week')}: ${bestLabel} | ${t('weekly_summary_attempted')}: ${totals.attempted} | ${t('weekly_summary_unsolved')}: ${totals.unsolved}`;
+}
+
+function renderTagsDonutChart(tagsDistribution) {
+  const ringContainer = $('#chart-tags-ring');
+  const legendContainer = $('#chart-tags-legend');
+  if (!ringContainer || !legendContainer) return;
+
+  const rows = Array.isArray(tagsDistribution)
+    ? tagsDistribution
+      .map((item) => ({
+        tag: String(item?.tag || '').trim(),
+        count: Number(item?.count || 0)
+      }))
+      .filter((item) => item.tag && Number.isFinite(item.count) && item.count > 0)
+    : [];
+
+  if (!rows.length) {
+    ringContainer.innerHTML = `<div style="text-align:center;color:var(--text-muted)">${escapeHtml(t('msg_no_tags_data'))}</div>`;
+    legendContainer.innerHTML = '';
+    return;
+  }
+
+  const total = rows.reduce((acc, cur) => acc + cur.count, 0);
+  const topRows = rows.slice(0, 20);
+  const cx = 170;
+  const cy = 170;
+  const outerR = 145;
+  const innerR = 70;
+
+  let startAngle = -Math.PI / 2;
+  const paths = [];
+  const legends = [];
+
+  for (let i = 0; i < topRows.length; i++) {
+    const row = topRows[i];
+    const ratio = row.count / total;
+    const delta = ratio * Math.PI * 2;
+    const endAngle = startAngle + delta;
+    const color = TAG_CHART_COLORS[i % TAG_CHART_COLORS.length];
+
+    const x1 = cx + outerR * Math.cos(startAngle);
+    const y1 = cy + outerR * Math.sin(startAngle);
+    const x2 = cx + outerR * Math.cos(endAngle);
+    const y2 = cy + outerR * Math.sin(endAngle);
+
+    const x3 = cx + innerR * Math.cos(endAngle);
+    const y3 = cy + innerR * Math.sin(endAngle);
+    const x4 = cx + innerR * Math.cos(startAngle);
+    const y4 = cy + innerR * Math.sin(startAngle);
+
+    const largeArcFlag = delta > Math.PI ? 1 : 0;
+    const pathData = `M ${x1.toFixed(3)} ${y1.toFixed(3)} A ${outerR} ${outerR} 0 ${largeArcFlag} 1 ${x2.toFixed(3)} ${y2.toFixed(3)} L ${x3.toFixed(3)} ${y3.toFixed(3)} A ${innerR} ${innerR} 0 ${largeArcFlag} 0 ${x4.toFixed(3)} ${y4.toFixed(3)} Z`;
+    const percent = (ratio * 100).toFixed(1);
+
+    paths.push(`<path d="${pathData}" fill="${color}" stroke="var(--bg-card)" stroke-width="1"><title>${escapeHtml(row.tag)}: ${row.count} (${percent}%)</title></path>`);
+    legends.push(`
+      <div class="chart-tags-legend-item" title="${escapeHtml(row.tag)}">
+        <span class="chart-tags-legend-color" style="background:${color}"></span>
+        <span class="chart-tags-legend-label">${escapeHtml(row.tag)} : ${row.count}</span>
+      </div>
+    `);
+
+    startAngle = endAngle;
+  }
+
+  const centerLabel = escapeHtml(t('label_tags_total'));
+  ringContainer.innerHTML = `
+    <svg width="100%" viewBox="0 0 340 340" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Tags solved donut chart">
+      ${paths.join('')}
+      <circle cx="${cx}" cy="${cy}" r="${innerR - 1}" fill="var(--bg-app)"></circle>
+      <text x="${cx}" y="${cy - 6}" text-anchor="middle" style="font-size:12px; fill: var(--text-muted);">${centerLabel}</text>
+      <text x="${cx}" y="${cy + 16}" text-anchor="middle" style="font-size:24px; font-weight:700; fill: var(--text-primary);">${total}</text>
+    </svg>
+  `;
+  legendContainer.innerHTML = legends.join('');
 }
 
 // Reports V2
