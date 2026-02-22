@@ -18,10 +18,9 @@ let isWeeklyTemplateVarsOpen = false;
 const ALLOWED_AC_LANGUAGES = ['c', 'cpp', 'python', 'java'];
 const ALLOWED_PROMPT_STYLES = ['custom', 'rigorous', 'intuitive', 'concise'];
 const TAG_CHART_COLORS = [
-  '#f07f73', '#ea6e9f', '#c06ad7', '#9b7de2', '#7f8ddf',
-  '#71b8dd', '#66c4de', '#64d0d3', '#66c4b9', '#84d58a',
-  '#b4e27f', '#e5ea78', '#ece873', '#ecea5b', '#f0cf58',
-  '#f3a067', '#f07c72'
+  '#6366f1', '#a855f7', '#ec4899', '#f43f5e', '#ef4444',
+  '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e',
+  '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6'
 ];
 
 const SOLUTION_TEMPLATE_VARIABLES = [
@@ -830,11 +829,11 @@ function renderImages(images, source, id, container) {
   // We need the API base URL.
 
   chrome.storage.local.get('acm_helper_api_base', (res) => {
-      const apiBase = res.acm_helper_api_base || 'http://localhost:8000';
-      
-      container.innerHTML = images.map(img => {
-          const src = `${apiBase}/static/solution-images/${img.relative_path}`;
-          return `
+    const apiBase = res.acm_helper_api_base || 'http://localhost:8000';
+
+    container.innerHTML = images.map(img => {
+      const src = `${apiBase}/static/solution-images/${img.relative_path}`;
+      return `
             <div class="solution-image-item" title="${img.filename}">
                 <div class="img-wrapper">
                     <img src="${src}" alt="${img.filename}">
@@ -842,12 +841,12 @@ function renderImages(images, source, id, container) {
                 <button class="btn-delete-image" data-id="${img.id}">&times;</button>
             </div>
           `;
-      }).join('');
+    }).join('');
 
-      // Bind delete events
-      container.querySelectorAll('.btn-delete-image').forEach(btn => {
-          btn.addEventListener('click', () => deleteImage(source, id, btn.dataset.id, container));
-      });
+    // Bind delete events
+    container.querySelectorAll('.btn-delete-image').forEach(btn => {
+      btn.addEventListener('click', () => deleteImage(source, id, btn.dataset.id, container));
+    });
   });
 }
 
@@ -879,13 +878,13 @@ async function handleFiles(files, source, id, container) {
 async function deleteImage(source, id, imageId, container) {
   if (!confirm(t('msg_confirm_delete') || 'Delete?')) return;
   try {
-      await api(`/api/problems/${encodeURIComponent(source)}/${encodeURIComponent(id)}/solution-images/${imageId}`, {
-          method: 'DELETE'
-      });
-      toast(t('msg_image_deleted'));
-      await loadImages(source, id, container);
+    await api(`/api/problems/${encodeURIComponent(source)}/${encodeURIComponent(id)}/solution-images/${imageId}`, {
+      method: 'DELETE'
+    });
+    toast(t('msg_image_deleted'));
+    await loadImages(source, id, container);
   } catch (err) {
-      toast(`${t('msg_image_delete_failed')}: ${err.message}`);
+    toast(`${t('msg_image_delete_failed')}: ${err.message}`);
   }
 }
 
@@ -1819,12 +1818,14 @@ function renderActivityHeatmap(dailyData, fromDateStr, toDateStr) {
   const container = $('#chart-activity-heatmap');
 
   const map = {};
+  let totalCount = 0;
   dailyData.forEach(d => {
     map[d.period_start] = d.solved_count;
+    totalCount += d.solved_count;
   });
 
   const boxSize = 12;
-  const gap = 3;
+  const gap = 4;
   const days = 7;
 
   // Determine date range
@@ -1852,36 +1853,151 @@ function renderActivityHeatmap(dailyData, fromDateStr, toDateStr) {
   // Add 1 to include end date, then divide by 7
   const weeks = Math.ceil((diffDays + 1) / 7) + 1; // +1 buffer
 
-  const width = weeks * (boxSize + gap);
-  const height = days * (boxSize + gap);
+  const leftPad = 25;
+  const topPad = 20;
+  const width = leftPad + weeks * (boxSize + gap);
+  const height = topPad + days * (boxSize + gap);
 
   const current = new Date(start);
 
   let svgContent = '';
 
+  // Day labels
+  const dayLabels = [
+    { y: topPad + 1 * (boxSize + gap) + 10, text: t('heatmap_mon') || 'Mon' },
+    { y: topPad + 3 * (boxSize + gap) + 10, text: t('heatmap_wed') || 'Wed' },
+    { y: topPad + 5 * (boxSize + gap) + 10, text: t('heatmap_fri') || 'Fri' }
+  ];
+  dayLabels.forEach(lbl => {
+    svgContent += `<text x="0" y="${lbl.y}" style="font-size:10px; fill:var(--text-muted);">${lbl.text}</text>`;
+  });
+
+  const monthNames = [
+    t('month_jan') || 'Jan', t('month_feb') || 'Feb', t('month_mar') || 'Mar', t('month_apr') || 'Apr',
+    t('month_may') || 'May', t('month_jun') || 'Jun', t('month_jul') || 'Jul', t('month_aug') || 'Aug',
+    t('month_sep') || 'Sep', t('month_oct') || 'Oct', t('month_nov') || 'Nov', t('month_dec') || 'Dec'
+  ];
+  // Two-pass month label rendering.
+  // Pass 1: scan and record which column each unique year-month first appears.
+  const monthFirstCol = new Map();
+  {
+    const scan = new Date(start);
+    for (let w = 0; w < weeks; w++) {
+      for (let d = 0; d < 7; d++) {
+        const ym = scan.getFullYear() + '-' + String(scan.getMonth() + 1).padStart(2, '0');
+        if (!monthFirstCol.has(ym)) {
+          monthFirstCol.set(ym, { col: w, month: scan.getMonth() });
+        }
+        scan.setDate(scan.getDate() + 1);
+      }
+    }
+  }
+
+  // Draw month labels (once per month and avoid overlap on narrow ranges).
+  const monthEntries = Array.from(monthFirstCol.values()).sort((a, b) => a.col - b.col);
+  let lastLabelRight = -Infinity;
+  monthEntries.forEach(({ col, month }) => {
+    const x = leftPad + col * (boxSize + gap);
+    const label = monthNames[month];
+    const estimatedWidth = Math.max(18, label.length * 10);
+
+    if (x < lastLabelRight + 6) return;
+
+    svgContent += '<text x="' + x + '" y="12" style="font-size:10px; fill:var(--text-muted);">' + label + '</text>';
+    lastLabelRight = x + estimatedWidth;
+  });
+
+  // Pass 2: draw cells.
   for (let w = 0; w < weeks; w++) {
     for (let d = 0; d < 7; d++) {
       const iso = current.toISOString().slice(0, 10);
       const count = map[iso] || 0;
-      const x = w * (boxSize + gap);
-      const y = d * (boxSize + gap);
+      const x = leftPad + w * (boxSize + gap);
+      const y = topPad + d * (boxSize + gap);
 
-      // Color scale
       let fill = 'var(--bg-input)';
       if (count > 0) fill = 'rgba(34, 197, 94, 0.4)';
       if (count > 2) fill = 'rgba(34, 197, 94, 0.6)';
       if (count > 5) fill = 'rgba(34, 197, 94, 0.8)';
       if (count > 10) fill = 'rgba(34, 197, 94, 1.0)';
 
-      svgContent += `<rect x="${x}" y="${y}" width="${boxSize}" height="${boxSize}" rx="2" fill="${fill}" class="heatmap-cell">
-                <title>${iso}: ${count} solved</title>
-            </rect>`;
+      const delay = (w * 10 + d * 5) + 'ms';
+      svgContent += '<rect x="' + x + '" y="' + y + '" width="' + boxSize + '" height="' + boxSize + '" rx="2" fill="' + fill + '" class="heatmap-cell" style="animation: heatmapCellEnter 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) ' + delay + ' both;" data-date="' + iso + '" data-count="' + count + '"></rect>';
 
       current.setDate(current.getDate() + 1);
     }
   }
 
-  container.innerHTML = `<svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">${svgContent}</svg>`;
+  const totalText = (t('heatmap_total') || '{count} submissions').replace('{count}', totalCount);
+  const legendHtml = `
+    <div class="heatmap-legend-container">
+      <div class="heatmap-legend-total" style="font-weight: 500;">${totalText}</div>
+      <div class="heatmap-legend">
+        <span>${t('heatmap_less') || 'Less'}</span>
+        <div class="heatmap-legend-item" style="background: var(--bg-input);"></div>
+        <div class="heatmap-legend-item" style="background: rgba(34, 197, 94, 0.4);"></div>
+        <div class="heatmap-legend-item" style="background: rgba(34, 197, 94, 0.6);"></div>
+        <div class="heatmap-legend-item" style="background: rgba(34, 197, 94, 0.8);"></div>
+        <div class="heatmap-legend-item" style="background: rgba(34, 197, 94, 1.0);"></div>
+        <span>${t('heatmap_more') || 'More'}</span>
+      </div>
+    </div>
+  `;
+
+  container.innerHTML = `
+    <div style="width: 100%; overflow-x: auto;">
+      <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMinYMin meet" style="display: block; margin: 0 auto;">
+        ${svgContent}
+      </svg>
+    </div>
+    ${legendHtml}
+  `;
+
+  initHeatmapTooltip(container);
+}
+
+function initHeatmapTooltip(container) {
+  let tooltip = document.getElementById('heatmap-tooltip');
+  if (!tooltip) {
+    tooltip = document.createElement('div');
+    tooltip.id = 'heatmap-tooltip';
+    tooltip.className = 'heatmap-tooltip';
+    document.body.appendChild(tooltip);
+  }
+
+  container.querySelectorAll('.heatmap-cell').forEach(cell => {
+    cell.addEventListener('mouseenter', (e) => {
+      const count = parseInt(cell.getAttribute('data-count'), 10);
+      const date = cell.getAttribute('data-date');
+
+      let text = '';
+      if (count > 0) {
+        text = (t('heatmap_tooltip') || '{count} solved on {date}').replace('{count}', count).replace('{date}', date);
+      } else {
+        text = (t('heatmap_tooltip_none') || 'No submissions on {date}').replace('{date}', date);
+      }
+
+      tooltip.textContent = text;
+      tooltip.classList.add('visible');
+
+      const rect = cell.getBoundingClientRect();
+      const tooltipRect = tooltip.getBoundingClientRect();
+
+      let top = rect.top - tooltipRect.height - 8;
+      let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+
+      if (top < 0) top = rect.bottom + 8;
+      if (left < 0) left = 4;
+      if (left + tooltipRect.width > window.innerWidth) left = window.innerWidth - tooltipRect.width - 4;
+
+      tooltip.style.top = `${top + window.scrollY}px`;
+      tooltip.style.left = `${left + window.scrollX}px`;
+    });
+
+    cell.addEventListener('mouseleave', () => {
+      tooltip.classList.remove('visible');
+    });
+  });
 }
 
 function renderWeeklyBarChart(weeklyData) {
@@ -1889,7 +2005,7 @@ function renderWeeklyBarChart(weeklyData) {
   // Take last 12 weeks
   const data = weeklyData.slice(-12);
   if (data.length === 0) {
-    container.innerHTML = `<div style="text-align:center;color:var(--text-muted)">No data</div>`;
+    container.innerHTML = `< div style = "text-align:center;color:var(--text-muted)" > No data</div > `;
     return;
   }
 
@@ -1899,25 +2015,35 @@ function renderWeeklyBarChart(weeklyData) {
   const height = 150;
   const width = data.length * (barWidth + gap);
 
+  let defs = `
+        <defs>
+        <linearGradient id="weekly-grad" x1="0%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%" stop-color="var(--accent-primary)" stop-opacity="0.6" />
+          <stop offset="100%" stop-color="#8b5cf6" stop-opacity="1.0" />
+        </linearGradient>
+        </defs>
+        `;
+
   let svg = '';
 
   data.forEach((d, i) => {
-    const h = (d.solved_count / maxVal) * (height - 20);
+    let rawH = (d.solved_count / maxVal) * (height - 20);
+    const h = Math.max(rawH, 4); // Min height of 4px
     const x = i * (barWidth + gap);
     const y = height - h - 20; // 20px padding bottom for labels
 
-    svg += `<rect x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="4" fill="var(--accent-primary)" class="chart-bar">
-           <title>${d.period_start}: ${d.solved_count}</title>
+    const fillClass = d.solved_count > 0 ? 'chart-bar active-bar' : 'chart-bar empty-bar';
+    const fillValue = d.solved_count > 0 ? 'url(#weekly-grad)' : 'var(--bg-input)';
+
+    svg += `<rect x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="4" fill="${fillValue}" class="${fillClass}" style="transform-origin: ${x + barWidth / 2}px ${height - 20}px; animation-delay: ${i * 40}ms;">
+        <title>${d.period_start}: ${d.solved_count}</title>
         </rect>`;
-    // Label
-    if (i % 2 === 0) { // Show every other label
-      // d.period_start is YYYY-MM-DD, show MM-DD
-      const label = d.period_start.slice(5);
-      svg += `<text x="${x}" y="${height - 5}" font-size="10" fill="var(--text-secondary)">${label}</text>`;
-    }
+    // Label: always show for up to 12 items
+    const label = d.period_start.slice(5);
+    svg += `<text x="${x + barWidth / 2}" y="${height - 5}" font-size="10" fill="var(--text-secondary)" text-anchor="middle">${label}</text>`;
   });
 
-  container.innerHTML = `<svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">${svg}</svg>`;
+  container.innerHTML = `<svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">${defs}${svg}</svg>`;
 }
 
 function summarizeWeeklyData(weeklyData) {
@@ -1952,6 +2078,19 @@ function summarizeWeeklyData(weeklyData) {
   summaryEl.textContent = `${t('weekly_summary_total')}: ${totals.solved} | ${t('weekly_summary_active_weeks')}: ${activeWeeks}/${data.length} | ${t('weekly_summary_best_week')}: ${bestLabel} | ${t('weekly_summary_attempted')}: ${totals.attempted} | ${t('weekly_summary_unsolved')}: ${totals.unsolved}`;
 }
 
+const TAG_CHART_GRADIENTS = [
+  { start: '#6366f1', end: '#a855f7' }, // Indigo -> Purple
+  { start: '#ec4899', end: '#f43f5e' }, // Pink -> Rose
+  { start: '#f97316', end: '#f59e0b' }, // Orange -> Amber
+  { start: '#10b981', end: '#34d399' }, // Emerald
+  { start: '#0ea5e9', end: '#3b82f6' }, // Sky -> Blue
+  { start: '#8b5cf6', end: '#c084fc' }, // Violet
+  { start: '#f43f5e', end: '#ef4444' }, // Rose -> Red
+  { start: '#14b8a6', end: '#2dd4bf' }, // Teal
+  { start: '#eab308', end: '#fef08a' }, // Yellow
+  { start: '#06b6d4', end: '#67e8f9' }, // Cyan
+];
+
 function renderTagsDonutChart(tagsDistribution) {
   const ringContainer = $('#chart-tags-ring');
   const legendContainer = $('#chart-tags-legend');
@@ -1973,22 +2112,32 @@ function renderTagsDonutChart(tagsDistribution) {
   }
 
   const total = rows.reduce((acc, cur) => acc + cur.count, 0);
-  const topRows = rows.slice(0, 20);
+  const topRows = rows; // Show all tags instead of slicing
   const cx = 170;
   const cy = 170;
-  const outerR = 145;
-  const innerR = 70;
+  const outerR = 140;
+  const innerR = 90;
 
   let startAngle = -Math.PI / 2;
   const paths = [];
   const legends = [];
+  const defs = [];
 
   for (let i = 0; i < topRows.length; i++) {
     const row = topRows[i];
     const ratio = row.count / total;
     const delta = ratio * Math.PI * 2;
     const endAngle = startAngle + delta;
-    const color = TAG_CHART_COLORS[i % TAG_CHART_COLORS.length];
+    const gradient = TAG_CHART_GRADIENTS[i % TAG_CHART_GRADIENTS.length];
+    const gradientId = `tag-grad-${i}`;
+
+    // Add SVG Defs for gradients
+    defs.push(`
+      <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="${gradient.start}" />
+        <stop offset="100%" stop-color="${gradient.end}" />
+      </linearGradient>
+    `);
 
     const x1 = cx + outerR * Math.cos(startAngle);
     const y1 = cy + outerR * Math.sin(startAngle);
@@ -2004,11 +2153,23 @@ function renderTagsDonutChart(tagsDistribution) {
     const pathData = `M ${x1.toFixed(3)} ${y1.toFixed(3)} A ${outerR} ${outerR} 0 ${largeArcFlag} 1 ${x2.toFixed(3)} ${y2.toFixed(3)} L ${x3.toFixed(3)} ${y3.toFixed(3)} A ${innerR} ${innerR} 0 ${largeArcFlag} 0 ${x4.toFixed(3)} ${y4.toFixed(3)} Z`;
     const percent = (ratio * 100).toFixed(1);
 
-    paths.push(`<path d="${pathData}" fill="${color}" stroke="var(--bg-card)" stroke-width="1"><title>${escapeHtml(row.tag)}: ${row.count} (${percent}%)</title></path>`);
+    paths.push(`<path 
+        d="${pathData}" 
+        fill="url(#${gradientId})" 
+        stroke="var(--bg-card)" 
+        stroke-width="3" 
+        class="chart-tags-segment" 
+        data-index="${i}"
+        style="animation-delay: ${i * 50}ms;"
+      >
+        <title>${escapeHtml(row.tag)}: ${row.count} (${percent}%)</title>
+      </path>`);
+
     legends.push(`
-      <div class="chart-tags-legend-item" title="${escapeHtml(row.tag)}">
-        <span class="chart-tags-legend-color" style="background:${color}"></span>
-        <span class="chart-tags-legend-label">${escapeHtml(row.tag)} : ${row.count}</span>
+      <div class="chart-tags-legend-item" data-index="${i}" title="${escapeHtml(row.tag)}" style="animation-delay: ${i * 40}ms;">
+        <span class="chart-tags-legend-color" style="background: linear-gradient(135deg, ${gradient.start}, ${gradient.end})"></span>
+        <span class="chart-tags-legend-label">${escapeHtml(row.tag)}</span>
+        <span class="chart-tags-legend-count-pill">${row.count}</span>
       </div>
     `);
 
@@ -2017,14 +2178,48 @@ function renderTagsDonutChart(tagsDistribution) {
 
   const centerLabel = escapeHtml(t('label_tags_total'));
   ringContainer.innerHTML = `
-    <svg width="100%" viewBox="0 0 340 340" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Tags solved donut chart">
-      ${paths.join('')}
-      <circle cx="${cx}" cy="${cy}" r="${innerR - 1}" fill="var(--bg-app)"></circle>
-      <text x="${cx}" y="${cy - 6}" text-anchor="middle" style="font-size:12px; fill: var(--text-muted);">${centerLabel}</text>
-      <text x="${cx}" y="${cy + 16}" text-anchor="middle" style="font-size:24px; font-weight:700; fill: var(--text-primary);">${total}</text>
+    <svg width="100%" viewBox="0 0 340 340" preserveAspectRatio="xMidYMid meet" class="donut-svg">
+      <defs>${defs.join('')}</defs>
+      <g class="chart-paths">${paths.join('')}</g>
+      <g class="chart-center-text" style="pointer-events: none;">
+        <text x="${cx}" y="${cy - 12}" text-anchor="middle" class="donut-center-label">${centerLabel}</text>
+        <text x="${cx}" y="${cy + 22}" text-anchor="middle" class="donut-center-value donut-center-value-glow">${total}</text>
+        <text x="${cx}" y="${cy + 22}" text-anchor="middle" class="donut-center-value">${total}</text>
+      </g>
     </svg>
   `;
   legendContainer.innerHTML = legends.join('');
+
+  // Interactivity
+  const segs = ringContainer.querySelectorAll('.chart-tags-segment');
+  const items = legendContainer.querySelectorAll('.chart-tags-legend-item');
+
+  function highlight(index, active) {
+    segs.forEach(s => {
+      if (s.dataset.index === String(index)) {
+        s.classList.toggle('active', active);
+      } else {
+        s.classList.toggle('dimmed', active);
+      }
+    });
+    items.forEach(it => {
+      if (it.dataset.index === String(index)) {
+        it.classList.toggle('active', active);
+      } else {
+        it.classList.toggle('dimmed', active);
+      }
+    });
+  }
+
+  segs.forEach(s => {
+    s.addEventListener('mouseenter', () => highlight(s.dataset.index, true));
+    s.addEventListener('mouseleave', () => highlight(s.dataset.index, false));
+  });
+
+  items.forEach(it => {
+    it.addEventListener('mouseenter', () => highlight(it.dataset.index, true));
+    it.addEventListener('mouseleave', () => highlight(it.dataset.index, false));
+  });
 }
 
 // Reports V2

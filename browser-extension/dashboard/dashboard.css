@@ -674,6 +674,38 @@ pre {
   border: 1px solid var(--border-color);
 }
 
+@keyframes barEnter {
+  0% {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.chart-bar {
+  cursor: pointer;
+  animation: barEnter 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  transition: filter 0.2s, transform 0.2s, fill 0.2s;
+}
+
+.chart-bar.active-bar:hover {
+  filter: brightness(1.2) drop-shadow(0 0 6px rgba(59, 130, 246, 0.5));
+  transform: scaleY(1.05);
+}
+
+.chart-bar.empty-bar {
+  opacity: 0.5;
+}
+
+.chart-bar.empty-bar:hover {
+  fill: var(--border-hover);
+  opacity: 1;
+}
+
 .chart-tags-container {
   display: flex;
   align-items: stretch;
@@ -698,9 +730,10 @@ pre {
 .chart-tags-legend {
   flex: 1 1 280px;
   min-width: 240px;
-  max-height: 320px;
+  max-height: 100%;
   overflow-y: auto;
   padding-right: 0.25rem;
+  padding-bottom: 0.5rem;
 }
 
 .chart-tags-legend-item {
@@ -721,9 +754,194 @@ pre {
 }
 
 .chart-tags-legend-label {
+  flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-weight: 500;
+  color: var(--text-primary);
+  opacity: 0.9;
+  transition: opacity 0.3s ease, color 0.3s ease;
+}
+
+.chart-tags-legend-item:hover .chart-tags-legend-label {
+  opacity: 1;
+}
+
+.chart-tags-legend-count-pill {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  opacity: 0.9;
+  background: var(--bg-app);
+  border: 1px solid var(--border-color);
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  min-width: 1.5rem;
+  text-align: center;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.chart-tags-legend-item:hover .chart-tags-legend-count-pill {
+  background: var(--bg-card);
+  border-color: var(--border-hover);
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.donut-svg {
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.25));
+  overflow: visible;
+  transition: filter 0.4s ease;
+}
+
+.chart-tags-ring:hover .donut-svg {
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.4));
+}
+
+@keyframes segmentEnter {
+  0% {
+    transform: scale(0.6) rotate(-15deg);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+
+.chart-tags-segment {
+  cursor: pointer;
+  transform-origin: center;
+  animation: segmentEnter 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.3s ease, stroke-width 0.3s ease, opacity 0.3s ease, stroke 0.3s ease;
+}
+
+.chart-tags-segment:hover,
+.chart-tags-segment.active {
+  transform: scale(1.05);
+  stroke-width: 2px;
+  stroke: var(--bg-card);
+  filter: brightness(1.2) drop-shadow(0 0 10px rgba(0, 0, 0, 0.1));
+  z-index: 10;
+}
+
+.chart-tags-segment.dimmed {
+  opacity: 0.25;
+  filter: grayscale(0.8) blur(1px);
+}
+
+@keyframes legendEnter {
+  0% {
+    transform: translateX(10px);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.chart-tags-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 12px;
+  background: rgba(var(--bg-card-rgb, 24, 24, 27), 0.4);
+  /* Variable not natively splitting RGB in standard CSS but fallback is dark */
+  background: var(--bg-app);
+  /* Fallback solid color */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  cursor: pointer;
+  animation: legendEnter 0.4s ease-out both;
+  margin-bottom: 0.4rem;
+}
+
+/* Base Light/Dark theme transparency hacks */
+.chart-tags-legend-item {
+  background: rgba(15, 15, 15, 0.4);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="light"] .chart-tags-legend-item {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+.chart-tags-legend-item:hover,
+.chart-tags-legend-item.active {
+  transform: translateX(-4px) scale(1.02);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.chart-tags-legend-item:hover,
+.chart-tags-legend-item.active {
+  background: rgba(60, 60, 70, 0.6);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+[data-theme="light"] .chart-tags-legend-item:hover,
+[data-theme="light"] .chart-tags-legend-item.active {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.chart-tags-legend-item.dimmed {
+  opacity: 0.3;
+  transform: translateX(4px);
+  background: rgba(25, 25, 30, 0.2);
+}
+
+[data-theme="light"] .chart-tags-legend-item.dimmed {
+  background: rgba(240, 240, 240, 0.4);
+}
+
+.donut-center-label {
+  font-size: 13px;
+  fill: var(--text-secondary);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: fill 0.3s ease;
+}
+
+.chart-tags-ring:hover .donut-center-label {
+  fill: var(--text-primary);
+}
+
+.donut-center-value {
+  font-size: 38px;
+  font-weight: 900;
+  fill: var(--text-primary);
+  letter-spacing: -0.03em;
+  font-family: var(--font-sans);
+  transition: fill 0.3s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transform-origin: center;
+}
+
+.chart-tags-ring:hover .donut-center-value {
+  fill: rgba(255, 255, 255, 1);
+  transform: scale(1.04);
+}
+
+.donut-center-value-glow {
+  filter: blur(8px);
+  opacity: 0.3;
+  fill: rgba(14, 165, 233, 0.8);
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.chart-tags-ring:hover .donut-center-value-glow {
+  opacity: 0.6;
+  filter: blur(12px);
 }
 
 text {
@@ -740,18 +958,82 @@ text {
   opacity: 0.8;
 }
 
+.heatmap-tooltip {
+  position: absolute;
+  background: rgba(30, 30, 30, 0.95);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  pointer-events: none;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  transition: opacity 0.2s, transform 0.2s;
+  opacity: 0;
+  transform: translateY(5px);
+  white-space: nowrap;
+}
+
+[data-theme="light"] .heatmap-tooltip {
+  background: rgba(255, 255, 255, 0.98);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.15);
+}
+
+.heatmap-tooltip.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes heatmapCellEnter {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 .heatmap-cell {
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
   shape-rendering: geometricPrecision;
   stroke: var(--bg-card);
-  /* Gap between cells */
   stroke-width: 2px;
+  transform-origin: center;
 }
 
 .heatmap-cell:hover {
   stroke: var(--text-primary);
   stroke-width: 2px;
   z-index: 10;
+  filter: brightness(1.2) drop-shadow(0 0 4px rgba(34, 197, 94, 0.4));
+  transform: scale(1.15);
+}
+
+.heatmap-legend-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.heatmap-legend-item {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
 }
 
 /* Tooltip for charts (simple) */
@@ -775,6 +1057,7 @@ text {
 }
 
 @media (max-width: 900px) {
+
   .chart-tags-ring,
   .chart-tags-legend {
     flex-basis: 100%;
