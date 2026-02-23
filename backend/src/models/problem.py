@@ -57,6 +57,17 @@ class ProblemInput(BaseModel):
     my_ac_code: str = ""
     my_ac_language: str = ""
 
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _normalize_tags(cls, value):
+        if value is None:
+            return []
+        if isinstance(value, str):
+            value = [value]
+        if isinstance(value, list):
+            return [str(v).replace(" ", "-") for v in value]
+        return value
+
     @field_validator("difficulty", mode="before")
     @classmethod
     def _normalize_difficulty(cls, value):
@@ -145,6 +156,17 @@ class ProblemInfoUpdateRequest(BaseModel):
     tags: list[str] | None = None
     difficulty: int | None = Field(default=None, ge=0)
     status: ProblemStatus | None = None
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _normalize_tags(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            value = [value]
+        if isinstance(value, list):
+            return [str(v).replace(" ", "-") for v in value]
+        return value
 
 
 class ProblemTranslateRequest(BaseModel):
