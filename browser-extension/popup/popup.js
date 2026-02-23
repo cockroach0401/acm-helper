@@ -10,6 +10,7 @@ const ATCODER_MESSAGE_TYPE = 'ACM_HELPER_ATCODER_SCRAPE';
 const NC_ACM_MESSAGE_TYPE = 'ACM_HELPER_NC_ACM_SCRAPE';
 const NC_PRACTICE_MESSAGE_TYPE = 'ACM_HELPER_NC_PRACTICE_SCRAPE';
 const LUOGU_MESSAGE_TYPE = 'ACM_HELPER_LUOGU_SCRAPE';
+const LEETCODE_MESSAGE_TYPE = 'ACM_HELPER_LEETCODE_SCRAPE';
 
 const CF_URL_RE = /^https:\/\/codeforces\.com\/(contest|gym)\/\d+\/problem\/[A-Za-z0-9_]+(?:\?.*)?$/i;
 const CF_GROUP_URL_RE = /^https:\/\/codeforces\.com\/group\/[^/]+\/(contest|gym)\/\d+\/problem\/[A-Za-z0-9_]+(?:\?.*)?$/i;
@@ -18,6 +19,7 @@ const NC_ACM_PROBLEM_URL_RE = /^https:\/\/ac\.nowcoder\.com\/acm\/problem\/\d+(?
 const NC_ACM_CONTEST_URL_RE = /^https:\/\/ac\.nowcoder\.com\/acm\/contest\/\d+\/[A-Za-z0-9_]+(?:\?.*)?$/i;
 const NC_PRACTICE_URL_RE = /^https:\/\/www\.nowcoder\.com\/practice\/[0-9a-fA-F]+(?:\?.*)?$/i;
 const LUOGU_URL_RE = /^https:\/\/www\.luogu\.com\.cn\/problem\/[A-Za-z0-9]+(?:\?.*)?$/i;
+const LEETCODE_URL_RE = /^https:\/\/leetcode\.cn\/problems\/[^/?#]+(?:\/description\/?)?(?:\?.*)?$/i;
 const ALLOWED_AC_LANGUAGES = new Set(['c', 'cpp', 'python', 'java']);
 
 // State
@@ -38,6 +40,7 @@ function resolveScrapeMessageType(url) {
   if (NC_ACM_PROBLEM_URL_RE.test(url) || NC_ACM_CONTEST_URL_RE.test(url)) return NC_ACM_MESSAGE_TYPE;
   if (NC_PRACTICE_URL_RE.test(url)) return NC_PRACTICE_MESSAGE_TYPE;
   if (LUOGU_URL_RE.test(url)) return LUOGU_MESSAGE_TYPE;
+  if (LEETCODE_URL_RE.test(url)) return LEETCODE_MESSAGE_TYPE;
   return null;
 }
 

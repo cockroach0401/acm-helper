@@ -15,7 +15,8 @@
     "https://atcoder.jp/*",
     "https://ac.nowcoder.com/*",
     "https://www.nowcoder.com/*",
-    "https://www.luogu.com.cn/*"
+    "https://www.luogu.com.cn/*",
+    "https://leetcode.cn/*"
   ],
   "content_scripts": [
     {
@@ -64,6 +65,15 @@
       ],
       "js": [
         "content/luogu_scraper.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://leetcode.cn/problems/*"
+      ],
+      "js": [
+        "content/leetcode_scraper.js"
       ],
       "run_at": "document_idle"
     }
