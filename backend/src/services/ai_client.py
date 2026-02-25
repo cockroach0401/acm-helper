@@ -1,11 +1,22 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 import httpx
 
 from ..models.settings import AIProfile, AIProvider, AISettings
+
+logger = logging.getLogger(__name__)
+
+# 遇到这些异常时自动重试（上游断连、网络中断等）
+_RETRYABLE_EXCEPTIONS = (
+    httpx.RemoteProtocolError,
+    httpx.ReadError,
+    httpx.ConnectError,
+    httpx.ConnectTimeout,
+)
 
 
 class AIClient:
@@ -25,15 +36,37 @@ class AIClient:
         result = await self._generate(probe_prompt, ai_settings)
         return result[:200]
 
+    _MAX_RETRIES = 2  # 最多重试 2 次（共 3 次尝试）
+
     async def _generate(
         self, prompt: str, ai_settings: AISettings, images_base64: list[str] | None = None
     ) -> str:
         profile = ai_settings.resolve_active_profile()
-        if profile.provider == AIProvider.openai_compatible:
-            return await self._generate_via_openai_compatible(prompt, profile, images_base64)
-        if profile.provider == AIProvider.anthropic:
-            return await self._generate_via_anthropic(prompt, profile, images_base64)
-        raise RuntimeError(f"Unsupported provider: {profile.provider}")
+        last_exc: Exception | None = None
+        for attempt in range(1 + self._MAX_RETRIES):
+            try:
+                if profile.provider == AIProvider.openai_compatible:
+                    return await self._generate_via_openai_compatible(
+                        prompt, profile, images_base64
+                    )
+                if profile.provider == AIProvider.anthropic:
+                    return await self._generate_via_anthropic(
+                        prompt, profile, images_base64
+                    )
+                raise RuntimeError(f"Unsupported provider: {profile.provider}")
+            except _RETRYABLE_EXCEPTIONS as exc:
+                last_exc = exc
+                if attempt < self._MAX_RETRIES:
+                    logger.warning(
+                        "AI request failed (attempt %d/%d): %s — retrying",
+                        attempt + 1,
+                        1 + self._MAX_RETRIES,
+                        exc,
+                    )
+                    continue
+        raise RuntimeError(
+            f"AI request failed after {1 + self._MAX_RETRIES} attempts: {last_exc}"
+        )
 
     async def _generate_via_openai_compatible(
         self, prompt: str, profile: AIProfile, images_base64: list[str] | None = None
