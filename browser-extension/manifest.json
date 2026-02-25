@@ -1,8 +1,14 @@
 {
   "manifest_version": 3,
   "name": "ACM Helper",
-  "version": "2.0.0",
+  "version": "3.9.0",
   "description": "ACM 刷题状态总览与题解管理助手",
+  "icons": {
+    "16": "1.png",
+    "32": "1.png",
+    "48": "1.png",
+    "128": "1.png"
+  },
   "permissions": [
     "storage",
     "tabs",
@@ -79,6 +85,12 @@
     }
   ],
   "action": {
-    "default_popup": "popup/popup.html"
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "1.png",
+      "32": "1.png",
+      "48": "1.png",
+      "128": "1.png"
+    }
   }
 }

@@ -14,6 +14,8 @@ let aiSaveQueue = Promise.resolve(true);
 let aiSaveInProgress = false;
 let isSolutionTemplateVarsOpen = false;
 let isWeeklyTemplateVarsOpen = false;
+let settingsFormBaseline = null;
+const problemInlineDraftState = new Map();
 
 const ALLOWED_AC_LANGUAGES = ['c', 'cpp', 'python', 'java'];
 const ALLOWED_PROMPT_STYLES = ['custom', 'rigorous', 'intuitive', 'concise'];
@@ -253,7 +255,140 @@ function extractApiErrorMessage(err) {
   return raw;
 }
 
+function normalizeTagsInput(raw) {
+  return [...new Set(String(raw || '')
+    .split(/[\n,，]/)
+    .map(v => v.trim())
+    .filter(Boolean))];
+}
+
+function getProblemInlineSnapshot(safeKey) {
+  const diffEl = $(`#edit-diff-${safeKey}`);
+  const statusEl = $(`#edit-status-${safeKey}`);
+  const reflectionEl = $(`#edit-reflection-${safeKey}`);
+  const tagsEl = $(`#edit-tags-${safeKey}`);
+  const codeEl = $(`#edit-code-${safeKey}`);
+  const langEl = $(`#edit-lang-${safeKey}`);
+
+  return {
+    difficulty: diffEl ? String(diffEl.value || '').trim() : '',
+    status: statusEl ? String(statusEl.value || '') : '',
+    reflection: reflectionEl ? String(reflectionEl.value || '') : '',
+    tags: normalizeTagsInput(tagsEl ? tagsEl.value : ''),
+    code: codeEl ? String(codeEl.value || '') : '',
+    language: langEl ? String(langEl.value || '') : ''
+  };
+}
+
+function isProblemInlineDirty(safeKey) {
+  const state = problemInlineDraftState.get(safeKey);
+  if (!state) return false;
+
+  // 行已被重渲染移除时，视为已丢弃草稿并清理状态
+  if (!$(`#edit-diff-${safeKey}`) || !$(`#edit-status-${safeKey}`) || !$(`#edit-reflection-${safeKey}`) || !$(`#edit-tags-${safeKey}`) || !$(`#edit-code-${safeKey}`) || !$(`#edit-lang-${safeKey}`)) {
+    problemInlineDraftState.delete(safeKey);
+    return false;
+  }
+
+  return JSON.stringify(getProblemInlineSnapshot(safeKey)) !== JSON.stringify(state.baseline);
+}
+
+function hasUnsavedProblemChanges() {
+  for (const safeKey of [...problemInlineDraftState.keys()]) {
+    if (isProblemInlineDirty(safeKey)) return true;
+  }
+  return false;
+}
+
+function clearProblemInlineDraft(safeKey) {
+  problemInlineDraftState.delete(safeKey);
+}
+
+function clearAllProblemInlineDrafts() {
+  problemInlineDraftState.clear();
+}
+
+function readSettingsFormSnapshot() {
+  const storageBaseDirEl = $('#storage-base-dir');
+  return {
+    solution_template: $('#solution-template')?.value || '',
+    insight_template: $('#weekly-template')?.value || '',
+    weekly_prompt_style: $('#weekly-prompt-style')?.value || 'custom',
+    weekly_style_custom_injection: $('#style-injection-custom')?.value || '',
+    weekly_style_rigorous_injection: $('#style-injection-rigorous')?.value || '',
+    weekly_style_intuitive_injection: $('#style-injection-intuitive')?.value || '',
+    weekly_style_concise_injection: $('#style-injection-concise')?.value || '',
+    default_ac_language: $('#default-ac-language')?.value || 'cpp',
+    storage_base_dir: (storageBaseDirEl?.value || '').trim(),
+    obsidian_mode_enabled: !!$('#obsidian-mode-enabled')?.checked
+  };
+}
+
+function captureSettingsBaseline() {
+  settingsFormBaseline = readSettingsFormSnapshot();
+}
+
+function isSettingsFormDirty() {
+  if (!settingsFormBaseline) return false;
+  return JSON.stringify(readSettingsFormSnapshot()) !== JSON.stringify(settingsFormBaseline);
+}
+
+function hasUnsavedSettingsChanges() {
+  return isAiProfileDirty() || isSettingsFormDirty();
+}
+
+function restoreSettingsFromBaseline() {
+  if (!settingsFormBaseline) return;
+
+  const setValue = (selector, value) => {
+    const el = $(selector);
+    if (el) el.value = value;
+  };
+
+  setValue('#solution-template', settingsFormBaseline.solution_template || '');
+  setValue('#weekly-template', settingsFormBaseline.insight_template || '');
+  setValue('#weekly-prompt-style', settingsFormBaseline.weekly_prompt_style || 'custom');
+  setValue('#style-injection-custom', settingsFormBaseline.weekly_style_custom_injection || '');
+  setValue('#style-injection-rigorous', settingsFormBaseline.weekly_style_rigorous_injection || '');
+  setValue('#style-injection-intuitive', settingsFormBaseline.weekly_style_intuitive_injection || '');
+  setValue('#style-injection-concise', settingsFormBaseline.weekly_style_concise_injection || '');
+  setValue('#default-ac-language', settingsFormBaseline.default_ac_language || 'cpp');
+  setValue('#storage-base-dir', settingsFormBaseline.storage_base_dir || '');
+
+  const obsidianModeEl = $('#obsidian-mode-enabled');
+  if (obsidianModeEl) obsidianModeEl.checked = !!settingsFormBaseline.obsidian_mode_enabled;
+
+  if (typeof updateStyleInjectionVisibility === 'function') {
+    updateStyleInjectionVisibility();
+  }
+}
+
+function confirmDiscardUnsavedByView(currentViewId) {
+  if (currentViewId === 'problems' && hasUnsavedProblemChanges()) {
+    const ok = confirm(t('msg_unsaved_problem_changes') || 'You have unsaved problem edits. Leave and discard them?');
+    if (ok) clearAllProblemInlineDrafts();
+    return ok;
+  }
+
+  if (currentViewId === 'settings' && hasUnsavedSettingsChanges()) {
+    const ok = confirm(t('msg_unsaved_settings_changes') || 'You have unsaved settings changes. Leave and discard them?');
+    if (!ok) return false;
+
+    fillAiProfileForm(getAiProfileById(aiProfilesState.selectedProfileId));
+    restoreSettingsFromBaseline();
+    return true;
+  }
+
+  return true;
+}
+
 function switchView(viewId) {
+  const activeViewEl = document.querySelector('.view.active');
+  const currentViewId = activeViewEl?.id?.replace('view-', '') || '';
+  if (currentViewId === viewId) return;
+
+  if (!confirmDiscardUnsavedByView(currentViewId)) return;
+
   $$('.view').forEach(el => el.classList.remove('active'));
   $$('.nav-item').forEach(el => el.classList.remove('active'));
 
@@ -506,7 +641,12 @@ async function toggleEditRow(source, id) {
   });
 
   if (!isHidden) {
+    if (isProblemInlineDirty(safeKey)) {
+      const ok = confirm(t('msg_unsaved_problem_changes') || 'You have unsaved problem edits. Leave and discard them?');
+      if (!ok) return;
+    }
     row.classList.add('hidden');
+    clearProblemInlineDraft(safeKey);
     return;
   }
 
@@ -594,8 +734,35 @@ async function renderInlineForm(container, source, id) {
         `;
 
     // Bind events
+    problemInlineDraftState.set(safeKey, {
+      source,
+      id,
+      baseline: getProblemInlineSnapshot(safeKey)
+    });
+
+    const bindDraftListener = (selector, eventName = 'input') => {
+      const el = container.querySelector(selector);
+      if (el) {
+        el.addEventListener(eventName, () => {
+          // no-op listener for实时脏检查，状态按需计算
+        });
+      }
+    };
+
+    bindDraftListener(`#edit-diff-${safeKey}`);
+    bindDraftListener(`#edit-status-${safeKey}`, 'change');
+    bindDraftListener(`#edit-reflection-${safeKey}`);
+    bindDraftListener(`#edit-tags-${safeKey}`);
+    bindDraftListener(`#edit-code-${safeKey}`);
+    bindDraftListener(`#edit-lang-${safeKey}`, 'change');
+
     container.querySelector('.cancel-edit-btn').addEventListener('click', () => {
+      if (isProblemInlineDirty(safeKey)) {
+        const ok = confirm(t('msg_unsaved_problem_changes') || 'You have unsaved problem edits. Leave and discard them?');
+        if (!ok) return;
+      }
       $(`#edit-${safeKey}`).classList.add('hidden');
+      clearProblemInlineDraft(safeKey);
     });
     container.querySelector('.save-edit-btn').addEventListener('click', () => {
       saveInlineDetails(source, id, safeKey);
@@ -617,10 +784,7 @@ async function saveInlineDetails(source, id, safeKey) {
   const code = $(`#edit-code-${safeKey}`).value;
   const language = $(`#edit-lang-${safeKey}`).value;
   const tagsRaw = ($(`#edit-tags-${safeKey}`)?.value || '').trim();
-  const tags = [...new Set(tagsRaw
-    .split(/[\n,，]/)
-    .map(v => v.trim())
-    .filter(Boolean))];
+  const tags = normalizeTagsInput(tagsRaw);
 
   const base = `/api/problems/${encodeURIComponent(source)}/${encodeURIComponent(id)}`;
   const promises = [];
@@ -663,6 +827,7 @@ async function saveInlineDetails(source, id, safeKey) {
     // Reload list to update badges
     await loadProblems();
     // Note: loading problems rebuilds DOM, so the edit row closes. This is expected "Done" behavior.
+    clearProblemInlineDraft(safeKey);
   } catch (err) {
     toast(`${t('msg_error')}: ${err.message}`);
   }
@@ -1204,6 +1369,8 @@ function renderSettings(settings, preferredProfileId = '') {
   if (obsidianModeEl) {
     obsidianModeEl.checked = !!ui.obsidian_mode_enabled;
   }
+
+  captureSettingsBaseline();
 }
 
 function renderTemplateVarsVisibility() {
@@ -1533,6 +1700,8 @@ async function saveAllSettings() {
     } else {
       toast(`${t('msg_templates_saved')} & ${t('msg_ui_saved')}`);
     }
+
+    captureSettingsBaseline();
   } catch (err) {
     const detail = extractApiErrorMessage(err);
     if (detail.includes('queued or running')) {
@@ -1579,6 +1748,8 @@ async function resetPromptTemplate(target) {
       $('#weekly-template').value = prompts.insight_template || '';
       toast(t('msg_templates_reset'));
     }
+
+    captureSettingsBaseline();
   } catch (err) {
     const detail = extractApiErrorMessage(err);
     toast(`${t('msg_error')}: ${detail || err.message}`);
@@ -2470,6 +2641,12 @@ async function init() {
   if (rangeSelector) {
     rangeSelector.addEventListener('change', () => loadStatsCharts());
   }
+
+  window.addEventListener('beforeunload', (event) => {
+    if (!hasUnsavedProblemChanges() && !hasUnsavedSettingsChanges()) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
 
   await loadSettings();
   await loadOverview();
