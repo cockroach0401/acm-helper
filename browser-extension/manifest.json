@@ -12,7 +12,8 @@
   "permissions": [
     "storage",
     "tabs",
-    "scripting"
+    "scripting",
+    "notifications"
   ],
   "host_permissions": [
     "http://localhost:8000/*",
@@ -24,6 +25,18 @@
     "https://www.luogu.com.cn/*",
     "https://leetcode.cn/*"
   ],
+  "background": {
+    "service_worker": "background/background.js",
+    "type": "module"
+  },
+  "commands": {
+    "auto-scrape-problem": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S"
+      },
+      "description": "自动抓取并导入当前题目"
+    }
+  },
   "content_scripts": [
     {
       "matches": [
@@ -33,7 +46,8 @@
         "https://codeforces.com/group/*/gym/*/problem/*"
       ],
       "js": [
-        "content/codeforces_scraper.js"
+        "content/codeforces_scraper.js",
+        "content/auto_scrape_shortcut.js"
       ],
       "run_at": "document_idle"
     },
@@ -42,7 +56,8 @@
         "https://atcoder.jp/contests/*/tasks/*"
       ],
       "js": [
-        "content/atcoder_scraper.js"
+        "content/atcoder_scraper.js",
+        "content/auto_scrape_shortcut.js"
       ],
       "run_at": "document_idle"
     },
@@ -52,7 +67,8 @@
         "https://ac.nowcoder.com/acm/contest/*/*"
       ],
       "js": [
-        "content/nowcoder_scraper.js"
+        "content/nowcoder_scraper.js",
+        "content/auto_scrape_shortcut.js"
       ],
       "run_at": "document_idle"
     },
@@ -61,7 +77,8 @@
         "https://www.nowcoder.com/practice/*"
       ],
       "js": [
-        "content/nowcoder_practice_scraper.js"
+        "content/nowcoder_practice_scraper.js",
+        "content/auto_scrape_shortcut.js"
       ],
       "run_at": "document_idle"
     },
@@ -70,7 +87,8 @@
         "https://www.luogu.com.cn/problem/*"
       ],
       "js": [
-        "content/luogu_scraper.js"
+        "content/luogu_scraper.js",
+        "content/auto_scrape_shortcut.js"
       ],
       "run_at": "document_idle"
     },
@@ -79,7 +97,8 @@
         "https://leetcode.cn/problems/*"
       ],
       "js": [
-        "content/leetcode_scraper.js"
+        "content/leetcode_scraper.js",
+        "content/auto_scrape_shortcut.js"
       ],
       "run_at": "document_idle"
     }
