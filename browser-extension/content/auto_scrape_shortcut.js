@@ -98,10 +98,18 @@
 
   // Listen for trigger from background when chrome.commands intercepts the key
   // (chrome.commands captures Ctrl+Shift+S at browser level before page keydown fires)
-  chrome.runtime.onMessage.addListener((message) => {
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === 'ACM_HELPER_COMMAND_TRIGGERED') {
       log('triggered via chrome.commands');
       showToast('ACM Helper：已触发自动抓取…');
+      sendResponse?.({ ok: true, handledBy: 'command-triggered-toast' });
+      return;
+    }
+
+    if (message?.type === 'ACM_HELPER_SHOW_PAGE_TOAST') {
+      log('show page toast from background', { kind: message.kind || 'info', message: message.message || '' });
+      showToast(message.message || 'ACM Helper', message.kind || 'info');
+      sendResponse?.({ ok: true, handledBy: 'page-toast' });
     }
   });
 

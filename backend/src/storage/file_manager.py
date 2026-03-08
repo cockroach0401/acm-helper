@@ -346,13 +346,14 @@ class FileManager:
 
     def _normalize_ac_language(self, language: str, default_language: str = "cpp") -> str:
         value = (language or "").strip().lower()
-        if value in {"c", "gnu c", "gcc"}:
+        compact = "".join(ch for ch in value if ch.isalnum() or ch == "+")
+        if compact in {"c", "gnuc", "gcc"}:
             return "c"
-        if value in {"cpp", "c++", "cc", "cxx"}:
+        if compact in {"cpp", "cc", "cxx", "g++"} or compact.startswith("c++") or compact.startswith("gnuc++"):
             return "cpp"
-        if value in {"python", "py", "python3"}:
+        if compact in {"python", "py"} or compact.startswith("python") or compact.startswith("pypy"):
             return "python"
-        if value in {"java", "jdk"}:
+        if compact == "jdk" or compact.startswith("java"):
             return "java"
         return default_language
 
