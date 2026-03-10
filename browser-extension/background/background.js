@@ -8,6 +8,7 @@ const LOG_PREFIX = '[ACM Helper Background]';
 
 const CF_MESSAGE_TYPE = 'ACM_HELPER_CF_SCRAPE';
 const ATCODER_MESSAGE_TYPE = 'ACM_HELPER_ATCODER_SCRAPE';
+const ATCODER_SUBMISSION_MESSAGE_TYPE = 'ACM_HELPER_ATCODER_SUBMISSION_SCRAPE';
 const NC_ACM_MESSAGE_TYPE = 'ACM_HELPER_NC_ACM_SCRAPE';
 const NC_PRACTICE_MESSAGE_TYPE = 'ACM_HELPER_NC_PRACTICE_SCRAPE';
 const LUOGU_MESSAGE_TYPE = 'ACM_HELPER_LUOGU_SCRAPE';
@@ -19,6 +20,7 @@ const NC_ACM_ACTION_READ_EDITOR = 'READ_EDITOR_SNAPSHOT';
 const CF_URL_RE = /^https:\/\/codeforces\.com\/(contest|gym)\/\d+\/problem\/[A-Za-z0-9_]+(?:\?.*)?$/i;
 const CF_GROUP_URL_RE = /^https:\/\/codeforces\.com\/group\/[^/]+\/(contest|gym)\/\d+\/problem\/[A-Za-z0-9_]+(?:\?.*)?$/i;
 const ATCODER_TASK_URL_RE = /^https:\/\/atcoder\.jp\/contests\/[^/]+\/tasks\/[^/?#]+(?:\?.*)?$/i;
+const ATCODER_SUBMISSION_URL_RE = /^https:\/\/atcoder\.jp\/contests\/[^/]+\/submissions\/\d+(?:\?.*)?$/i;
 const NC_ACM_PROBLEM_URL_RE = /^https:\/\/ac\.nowcoder\.com\/acm\/problem\/\d+(?:\?.*)?$/i;
 const NC_ACM_CONTEST_URL_RE = /^https:\/\/ac\.nowcoder\.com\/acm\/contest\/\d+\/[A-Za-z0-9_]+(?:\?.*)?$/i;
 const NC_PRACTICE_URL_RE = /^https:\/\/www\.nowcoder\.com\/practice\/[0-9a-fA-F]+(?:\?.*)?$/i;
@@ -102,6 +104,49 @@ function summarizeTab(tab) {
     url: tab.url || '',
     title: tab.title || '',
   };
+}
+
+function normalizeInlineText(value) {
+  return String(value || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeCodeText(value) {
+  return String(value || '').replace(/\r\n/g, '\n');
+}
+
+function toAbsoluteUrl(url, base = 'https://atcoder.jp/') {
+  try {
+    return new URL(url, base).toString();
+  } catch {
+    return '';
+  }
+}
+
+function normalizeAtcoderLanguage(language, aceMode = '') {
+  const value = normalizeInlineText(language).toLowerCase();
+  const normalizedAceMode = normalizeInlineText(aceMode).toLowerCase();
+
+  if (value.includes('pypy') || value.includes('python') || normalizedAceMode.includes('python')) {
+    return 'python';
+  }
+
+  if (value.includes('c++') || value.includes('clang++') || value.includes('g++') || normalizedAceMode === 'c_cpp') {
+    return 'cpp';
+  }
+
+  if (/^c(?:\s|\(|$)/i.test(value) || value.startsWith('gcc ') || value === 'gcc' || normalizedAceMode === 'c') {
+    return 'c';
+  }
+
+  if (value.includes('java') || normalizedAceMode.includes('java')) {
+    return 'java';
+  }
+
+  return '';
 }
 
 function resolveScrapeMessageType(url) {
@@ -334,6 +379,149 @@ async function showPageToast(tabId, message, kind = 'info') {
 
 async function delay(ms) {
   await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForTabComplete(tabId, timeoutMs = 15000) {
+  const currentTab = await chrome.tabs.get(tabId).catch(() => null);
+  if (currentTab?.status === 'complete') {
+    return currentTab;
+  }
+
+  return await new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      reject(new Error(text('后台页面加载超时。', 'Background tab load timed out.')));
+    }, timeoutMs);
+
+    const cleanup = () => {
+      clearTimeout(timeoutId);
+      chrome.tabs.onUpdated.removeListener(handleUpdated);
+      chrome.tabs.onRemoved.removeListener(handleRemoved);
+    };
+
+    const handleUpdated = (updatedTabId, changeInfo, tab) => {
+      if (updatedTabId !== tabId || changeInfo.status !== 'complete') {
+        return;
+      }
+      cleanup();
+      resolve(tab);
+    };
+
+    const handleRemoved = (removedTabId) => {
+      if (removedTabId !== tabId) {
+        return;
+      }
+      cleanup();
+      reject(new Error(text('后台页面已关闭。', 'Background tab was closed.')));
+    };
+
+    chrome.tabs.onUpdated.addListener(handleUpdated);
+    chrome.tabs.onRemoved.addListener(handleRemoved);
+  });
+}
+
+async function sendTabMessageWithRetry(tabId, message, attempts = 10, retryDelayMs = 250) {
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await sendTabMessage(tabId, message);
+    } catch (err) {
+      lastError = err;
+      log('sendTabMessageWithRetry:attempt failed', {
+        tabId,
+        attempt,
+        attempts,
+        error: err?.message || String(err),
+      });
+
+      if (attempt < attempts) {
+        await delay(retryDelayMs);
+      }
+    }
+  }
+
+  throw lastError || new Error(text('无法连接页面脚本。', 'Failed to connect to page script.'));
+}
+
+async function closeTabQuietly(tabId) {
+  if (!Number.isInteger(tabId) || tabId < 0) return;
+
+  try {
+    await chrome.tabs.remove(tabId);
+    log('closeTabQuietly:removed', { tabId });
+  } catch (err) {
+    log('closeTabQuietly:ignored error', { tabId, error: err?.message || String(err) });
+  }
+}
+
+async function readAtcoderSubmissionFromTab(tabId) {
+  const results = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => {
+      const normalizeInline = (value) => String(value || '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\u00a0/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const findFieldValue = (patterns) => {
+        const rows = Array.from(document.querySelectorAll('table tr'));
+        for (const row of rows) {
+          const header = normalizeInline(row.querySelector('th')?.innerText || row.querySelector('th')?.textContent || '');
+          if (!header) continue;
+          if (!patterns.some((pattern) => pattern.test(header))) continue;
+          const cell = row.querySelector('td');
+          const value = normalizeInline(cell?.innerText || cell?.textContent || '');
+          if (value) return value;
+        }
+        return '';
+      };
+
+      const copyPre = document.querySelector('#for_copy0') || document.querySelector('pre.source-code-for-copy');
+      let code = '';
+      let aceMode = '';
+
+      if (copyPre && copyPre.textContent && copyPre.textContent.trim()) {
+        code = String(copyPre.textContent || '');
+        const mainPre = document.querySelector('#submission-code');
+        aceMode = mainPre?.getAttribute('data-ace-mode') || mainPre?.dataset?.aceMode || '';
+      } else {
+        const pre = document.querySelector('#submission-code') || document.querySelector('pre.prettyprint') || document.querySelector('pre');
+        code = pre ? String(pre.textContent || '') : '';
+        aceMode = pre?.getAttribute('data-ace-mode') || pre?.dataset?.aceMode || '';
+      }
+      const language = findFieldValue([/^Language$/i, /^言語$/]);
+
+      return {
+        code: code.replace(/\r\n/g, '\n'),
+        language,
+        aceMode,
+        title: document.title || '',
+        url: location.href,
+      };
+    },
+  });
+
+  const details = results?.[0]?.result || null;
+  log('readAtcoderSubmissionFromTab:', {
+    tabId,
+    details: details
+      ? {
+          language: details.language || '',
+          aceMode: details.aceMode || '',
+          codeLength: String(details.code || '').length,
+          title: details.title || '',
+          url: details.url || '',
+        }
+      : null,
+  });
+
+  if (!details) {
+    throw new Error(text('无法读取 AtCoder 提交页。', 'Failed to read AtCoder submission page.'));
+  }
+
+  return details;
 }
 
 async function readNowcoderEditorSnapshotWithRetry(tabId, submission) {
@@ -634,6 +822,110 @@ async function handleNowcoderStatusRequest(details) {
   }
 }
 
+async function handleAtcoderSubmissionScrapeRequest(message, sender) {
+  const senderTabId = sender?.tab?.id;
+  const senderUrl = sender?.tab?.url || 'https://atcoder.jp/';
+  const problemUrl = toAbsoluteUrl(message?.problemUrl || '', senderUrl);
+  const submissionUrl = toAbsoluteUrl(message?.submissionUrl || '', senderUrl);
+  const rowLanguage = normalizeInlineText(message?.language || '');
+
+  log('handleAtcoderSubmissionScrapeRequest:start', {
+    senderTabId,
+    senderUrl,
+    problemUrl,
+    submissionUrl,
+    rowLanguage,
+  });
+
+  if (!ATCODER_TASK_URL_RE.test(problemUrl)) {
+    throw new Error(text('AtCoder 题目链接无效。', 'Invalid AtCoder problem URL.'));
+  }
+
+  if (!ATCODER_SUBMISSION_URL_RE.test(submissionUrl)) {
+    throw new Error(text('AtCoder 提交详情链接无效。', 'Invalid AtCoder submission URL.'));
+  }
+
+  let problemTabId = null;
+  let submissionTabId = null;
+
+  try {
+    const problemTab = await chrome.tabs.create({ url: problemUrl, active: false });
+    problemTabId = problemTab?.id ?? null;
+    if (!Number.isInteger(problemTabId) || problemTabId < 0) {
+      throw new Error(text('无法创建题面后台标签页。', 'Failed to create background problem tab.'));
+    }
+    log('handleAtcoderSubmissionScrapeRequest:opened problem tab', summarizeTab(problemTab));
+    await waitForTabComplete(problemTabId);
+
+    const problemPayload = await sendTabMessageWithRetry(problemTabId, { type: ATCODER_MESSAGE_TYPE });
+    if (!problemPayload?.ok || !problemPayload.problem) {
+      throw new Error(problemPayload?.reason || text('无法抓取 AtCoder 题面。', 'Failed to scrape AtCoder problem.'));
+    }
+
+    const submissionTab = await chrome.tabs.create({ url: submissionUrl, active: false });
+    submissionTabId = submissionTab?.id ?? null;
+    if (!Number.isInteger(submissionTabId) || submissionTabId < 0) {
+      throw new Error(text('无法创建提交详情后台标签页。', 'Failed to create background submission tab.'));
+    }
+    log('handleAtcoderSubmissionScrapeRequest:opened submission tab', summarizeTab(submissionTab));
+    await waitForTabComplete(submissionTabId);
+
+    const submissionDetails = await readAtcoderSubmissionFromTab(submissionTabId);
+    const code = normalizeCodeText(submissionDetails.code || '');
+    if (!code.trim()) {
+      throw new Error(text('未提取到提交代码。', 'Failed to extract submitted code.'));
+    }
+
+    const rawLanguage = rowLanguage || normalizeInlineText(submissionDetails.language || '');
+    const mappedLanguage = normalizeAtcoderLanguage(rawLanguage, submissionDetails.aceMode || '');
+    const problem = applyProblemOverrides(problemPayload.problem, {
+      status: 'solved',
+      my_ac_code: code,
+      my_ac_language: mappedLanguage || rawLanguage || normalizeInlineText(submissionDetails.aceMode || ''),
+    });
+
+    await importProblem(problem);
+
+    if (Number.isInteger(senderTabId) && senderTabId >= 0) {
+      await showPageToast(
+        senderTabId,
+        text(`已导入题目：${problem.id}`, `Imported problem: ${problem.id}`),
+        'success'
+      );
+    }
+
+    log('handleAtcoderSubmissionScrapeRequest:done', {
+      senderTabId,
+      problem: summarizeProblem(problem),
+      rawLanguage,
+      mappedLanguage,
+      submissionCodeLength: code.length,
+    });
+
+    return {
+      ok: true,
+      problemId: problem.id,
+      language: problem.my_ac_language || '',
+    };
+  } catch (err) {
+    if (Number.isInteger(senderTabId) && senderTabId >= 0) {
+      await showPageToast(
+        senderTabId,
+        `${text('导入失败：', 'Import failed: ')}${err?.message || String(err)}`,
+        'error'
+      );
+    }
+    log('handleAtcoderSubmissionScrapeRequest:failed', {
+      senderTabId,
+      error: err?.message || String(err),
+    });
+    throw err;
+  } finally {
+    await closeTabQuietly(problemTabId);
+    await closeTabQuietly(submissionTabId);
+  }
+}
+
 chrome.webRequest.onCompleted.addListener(
   (details) => {
     handleNowcoderStatusRequest(details).catch((err) => {
@@ -663,23 +955,35 @@ chrome.commands.onCommand.addListener((command) => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (!message || message.type !== TRIGGER_AUTO_SCRAPE_MESSAGE) return;
+  if (!message) return;
 
-  const senderUrl = sender?.tab?.url || 'unknown';
-  log('runtime message trigger from tab:', {
-    senderUrl,
-    senderTabId: sender?.tab?.id,
-    message,
-  });
-
-  handleAutoScrapeCommand('content-script-message')
-    .then(() => sendResponse({ ok: true }))
-    .catch((err) => {
-      log('runtime message trigger failed', err?.message || String(err));
-      sendResponse({ ok: false, reason: err?.message || String(err) });
+  if (message.type === TRIGGER_AUTO_SCRAPE_MESSAGE) {
+    const senderUrl = sender?.tab?.url || 'unknown';
+    log('runtime message trigger from tab:', {
+      senderUrl,
+      senderTabId: sender?.tab?.id,
+      message,
     });
 
-  return true;
+    handleAutoScrapeCommand('content-script-message')
+      .then(() => sendResponse({ ok: true }))
+      .catch((err) => {
+        log('runtime message trigger failed', err?.message || String(err));
+        sendResponse({ ok: false, reason: err?.message || String(err) });
+      });
+
+    return true;
+  }
+
+  if (message.type === ATCODER_SUBMISSION_MESSAGE_TYPE) {
+    handleAtcoderSubmissionScrapeRequest(message, sender)
+      .then((result) => sendResponse(result))
+      .catch((err) => {
+        sendResponse({ ok: false, reason: err?.message || String(err) });
+      });
+
+    return true;
+  }
 });
 
 chrome.runtime.onInstalled.addListener(async () => {

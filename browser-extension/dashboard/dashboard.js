@@ -2087,10 +2087,10 @@ function renderActivityHeatmap(dailyData, fromDateStr, toDateStr) {
       const y = topPad + d * (boxSize + gap);
 
       let fill = 'var(--bg-input)';
-      if (count > 0) fill = 'rgba(34, 197, 94, 0.4)';
-      if (count > 2) fill = 'rgba(34, 197, 94, 0.6)';
-      if (count > 5) fill = 'rgba(34, 197, 94, 0.8)';
-      if (count > 10) fill = 'rgba(34, 197, 94, 1.0)';
+      if (count > 0) fill = 'var(--heatmap-1)';
+      if (count > 2) fill = 'var(--heatmap-2)';
+      if (count > 5) fill = 'var(--heatmap-3)';
+      if (count > 10) fill = 'var(--heatmap-4)';
 
       const delay = (w * 10 + d * 5) + 'ms';
       svgContent += '<rect x="' + x + '" y="' + y + '" width="' + boxSize + '" height="' + boxSize + '" rx="2" fill="' + fill + '" class="heatmap-cell" style="animation: heatmapCellEnter 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) ' + delay + ' both;" data-date="' + iso + '" data-count="' + count + '"></rect>';
@@ -2106,10 +2106,10 @@ function renderActivityHeatmap(dailyData, fromDateStr, toDateStr) {
       <div class="heatmap-legend">
         <span>${t('heatmap_less') || 'Less'}</span>
         <div class="heatmap-legend-item" style="background: var(--bg-input);"></div>
-        <div class="heatmap-legend-item" style="background: rgba(34, 197, 94, 0.4);"></div>
-        <div class="heatmap-legend-item" style="background: rgba(34, 197, 94, 0.6);"></div>
-        <div class="heatmap-legend-item" style="background: rgba(34, 197, 94, 0.8);"></div>
-        <div class="heatmap-legend-item" style="background: rgba(34, 197, 94, 1.0);"></div>
+        <div class="heatmap-legend-item" style="background: var(--heatmap-1);"></div>
+        <div class="heatmap-legend-item" style="background: var(--heatmap-2);"></div>
+        <div class="heatmap-legend-item" style="background: var(--heatmap-3);"></div>
+        <div class="heatmap-legend-item" style="background: var(--heatmap-4);"></div>
         <span>${t('heatmap_more') || 'More'}</span>
       </div>
     </div>
@@ -2123,6 +2123,7 @@ function renderActivityHeatmap(dailyData, fromDateStr, toDateStr) {
     </div>
     ${legendHtml}
   `;
+
 
   initHeatmapTooltip(container);
 }

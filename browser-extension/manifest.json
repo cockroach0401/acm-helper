@@ -64,6 +64,15 @@
     },
     {
       "matches": [
+        "https://atcoder.jp/contests/*/submissions*"
+      ],
+      "js": [
+        "content/atcoder_submissions_scraper.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
         "https://ac.nowcoder.com/acm/problem/*",
         "https://ac.nowcoder.com/acm/contest/*/*"
       ],

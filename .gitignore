@@ -27,3 +27,4 @@ build/
 backend/data/**
 !backend/data/.gitkeep
 backend/storage_config.json
+.history/

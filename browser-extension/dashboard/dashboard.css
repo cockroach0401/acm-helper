@@ -28,6 +28,12 @@
   --radius: 0.5rem;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+
+  /* Heatmap Dark */
+  --heatmap-1: #0e4429;
+  --heatmap-2: #006d32;
+  --heatmap-3: #26a641;
+  --heatmap-4: #39d353;
 }
 
 [data-theme="light"] {
@@ -54,6 +60,12 @@
   --accent-primary: #2563eb;
   /* Blue 600 */
   --accent-primary-hover: #1d4ed8;
+
+  /* Heatmap Light */
+  --heatmap-1: #9be9a8;
+  --heatmap-2: #40c463;
+  --heatmap-3: #30a14e;
+  --heatmap-4: #216e39;
 }
 
 * {
@@ -274,6 +286,11 @@ textarea {
   font-size: 0.925rem;
   font-family: inherit;
   transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input[type="week"],
+input[type="month"] {
+  max-width: 250px;
 }
 
 input:focus,
