@@ -689,11 +689,11 @@ pre {
 .heatmap-container,
 .chart-bar-container,
 .chart-tags-ring {
-  background: var(--bg-app);
+  background: transparent;
   border-radius: var(--radius);
-  padding: 1rem;
+  padding: 0;
   overflow-x: auto;
-  border: 1px solid var(--border-color);
+  border: none;
 }
 
 @keyframes barEnter {
@@ -813,13 +813,12 @@ pre {
 }
 
 .donut-svg {
-  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.25));
   overflow: visible;
   transition: filter 0.4s ease;
 }
 
 .chart-tags-ring:hover .donut-svg {
-  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.4));
+  filter: none;
 }
 
 @keyframes segmentEnter {
@@ -846,7 +845,7 @@ pre {
   transform: scale(1.05);
   stroke-width: 2px;
   stroke: var(--bg-card);
-  filter: brightness(1.2) drop-shadow(0 0 10px rgba(0, 0, 0, 0.1));
+  filter: brightness(1.2);
   z-index: 10;
 }
 
@@ -900,7 +899,7 @@ pre {
 .chart-tags-legend-item:hover,
 .chart-tags-legend-item.active {
   transform: translateX(-4px) scale(1.02);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  box-shadow: none;
 }
 
 .chart-tags-legend-item:hover,
@@ -913,7 +912,7 @@ pre {
 [data-theme="light"] .chart-tags-legend-item.active {
   background: rgba(255, 255, 255, 0.95);
   border-color: rgba(0, 0, 0, 0.15);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  box-shadow: none;
 }
 
 .chart-tags-legend-item.dimmed {
@@ -1024,8 +1023,8 @@ text {
 .heatmap-cell {
   transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
   shape-rendering: geometricPrecision;
-  stroke: var(--bg-card);
-  stroke-width: 2px;
+  stroke: none;
+  stroke-width: 0;
   transform-origin: center;
 }
 
@@ -1033,7 +1032,7 @@ text {
   stroke: var(--text-primary);
   stroke-width: 2px;
   z-index: 10;
-  filter: brightness(1.2) drop-shadow(0 0 4px rgba(34, 197, 94, 0.4));
+  filter: brightness(1.2);
   transform: scale(1.15);
 }
 

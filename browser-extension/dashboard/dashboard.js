@@ -1995,8 +1995,8 @@ function renderActivityHeatmap(dailyData, fromDateStr, toDateStr) {
     totalCount += d.solved_count;
   });
 
-  const boxSize = 12;
-  const gap = 4;
+  const boxSize = 14;
+  const gap = 3;
   const days = 7;
 
   // Determine date range
@@ -2093,7 +2093,7 @@ function renderActivityHeatmap(dailyData, fromDateStr, toDateStr) {
       if (count > 10) fill = 'var(--heatmap-4)';
 
       const delay = (w * 10 + d * 5) + 'ms';
-      svgContent += '<rect x="' + x + '" y="' + y + '" width="' + boxSize + '" height="' + boxSize + '" rx="2" fill="' + fill + '" class="heatmap-cell" style="animation: heatmapCellEnter 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) ' + delay + ' both;" data-date="' + iso + '" data-count="' + count + '"></rect>';
+      svgContent += '<rect x="' + x + '" y="' + y + '" width="' + boxSize + '" height="' + boxSize + '" rx="4" fill="' + fill + '" class="heatmap-cell" style="animation: heatmapCellEnter 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) ' + delay + ' both;" data-date="' + iso + '" data-count="' + count + '"></rect>';
 
       current.setDate(current.getDate() + 1);
     }
