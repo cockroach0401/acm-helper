@@ -30,6 +30,7 @@
   --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
 
   /* Heatmap Dark */
+  --heatmap-0: #21262d;
   --heatmap-1: #0e4429;
   --heatmap-2: #006d32;
   --heatmap-3: #26a641;
@@ -62,6 +63,7 @@
   --accent-primary-hover: #1d4ed8;
 
   /* Heatmap Light */
+  --heatmap-0: #ebedf0;
   --heatmap-1: #9be9a8;
   --heatmap-2: #40c463;
   --heatmap-3: #30a14e;

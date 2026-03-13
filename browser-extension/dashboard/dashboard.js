@@ -1,4 +1,4 @@
-﻿import { api, getCurrentMonth } from '../utils/api.js';
+import { api, getCurrentMonth } from '../utils/api.js';
 import { t, getLang, setLang } from './i18n.js';
 
 const $ = (s) => document.querySelector(s);
@@ -2086,7 +2086,7 @@ function renderActivityHeatmap(dailyData, fromDateStr, toDateStr) {
       const x = leftPad + w * (boxSize + gap);
       const y = topPad + d * (boxSize + gap);
 
-      let fill = 'var(--bg-input)';
+      let fill = 'var(--heatmap-0)';
       if (count > 0) fill = 'var(--heatmap-1)';
       if (count > 2) fill = 'var(--heatmap-2)';
       if (count > 5) fill = 'var(--heatmap-3)';
@@ -2105,7 +2105,7 @@ function renderActivityHeatmap(dailyData, fromDateStr, toDateStr) {
       <div class="heatmap-legend-total" style="font-weight: 500;">${totalText}</div>
       <div class="heatmap-legend">
         <span>${t('heatmap_less') || 'Less'}</span>
-        <div class="heatmap-legend-item" style="background: var(--bg-input);"></div>
+        <div class="heatmap-legend-item" style="background: var(--heatmap-0);"></div>
         <div class="heatmap-legend-item" style="background: var(--heatmap-1);"></div>
         <div class="heatmap-legend-item" style="background: var(--heatmap-2);"></div>
         <div class="heatmap-legend-item" style="background: var(--heatmap-3);"></div>
@@ -2205,7 +2205,7 @@ function renderWeeklyBarChart(weeklyData) {
     const y = height - h - 20; // 20px padding bottom for labels
 
     const fillClass = d.solved_count > 0 ? 'chart-bar active-bar' : 'chart-bar empty-bar';
-    const fillValue = d.solved_count > 0 ? 'url(#weekly-grad)' : 'var(--bg-input)';
+    const fillValue = d.solved_count > 0 ? 'url(#weekly-grad)' : 'var(--heatmap-0)';
 
     svg += `<rect x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="4" fill="${fillValue}" class="${fillClass}" style="transform-origin: ${x + barWidth / 2}px ${height - 20}px; animation-delay: ${i * 40}ms;">
         <title>${d.period_start}: ${d.solved_count}</title>
