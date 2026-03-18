@@ -1230,9 +1230,15 @@ text {
 .ai-settings-layout {
   display: grid;
   grid-template-columns: minmax(240px, 0.95fr) 1.6fr;
-  gap: 1rem;
+  gap: 1.5rem;
   align-items: start;
 }
+
+.ai-settings-layout > .form-group:first-child {
+  margin-top: 0.75rem; /* Push the left column down a bit to avoid overlapping feeling */
+}
+
+
 
 .ai-profile-list {
   display: flex;

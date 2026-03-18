@@ -56,11 +56,13 @@ class ObsidianMarkdownModeTests(unittest.TestCase):
         self.assertIn("tags:\n", text)
         self.assertIn('  - "动态规划"\n', text)
         self.assertIn('  - "图论"\n', text)
-        self.assertIn('source: "codeforces"\n', text)
-        self.assertIn('problem_id: "100A"\n', text)
-        self.assertIn('title: "Test Problem"\n', text)
-        self.assertIn("difficulty: 1700\n", text)
-        self.assertIn("# Problem\n", text)
+        self.assertIn('来源: "codeforces"\n', text)
+        self.assertIn('题目ID: "100A"\n', text)
+        self.assertIn('标题: "Test Problem"\n', text)
+        self.assertIn("难度: 1700\n", text)
+        self.assertIn('状态: "未解决"\n', text)
+        self.assertNotIn("# Problem\n", text)
+        self.assertIn("## 题目描述\n", text)
 
     def test_solution_markdown_includes_frontmatter_when_obsidian_mode_enabled(self) -> None:
         self._enable_obsidian_mode()
@@ -78,10 +80,10 @@ class ObsidianMarkdownModeTests(unittest.TestCase):
         self.assertIn("tags:\n", text)
         self.assertIn('  - "模拟"\n', text)
         self.assertIn('  - "题解"\n', text)
-        self.assertIn('source: "luogu"\n', text)
-        self.assertIn('problem_id: "P1001"\n', text)
-        self.assertIn('title: "A+B"\n', text)
-        self.assertIn("type: solution\n", text)
+        self.assertIn('来源: "luogu"\n', text)
+        self.assertIn('题目ID: "P1001"\n', text)
+        self.assertIn('标题: "A+B"\n', text)
+        self.assertIn("类型: 题解\n", text)
         self.assertTrue(text.rstrip().endswith("正文"))
 
 

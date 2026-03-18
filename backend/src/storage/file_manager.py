@@ -190,21 +190,26 @@ class FileManager:
         else:
             lines.append("tags: []")
 
+        status_map = {
+            ProblemStatus.solved: "已解决",
+            ProblemStatus.attempted: "尝试过",
+            ProblemStatus.unsolved: "未解决",
+        }
         lines.extend(
             [
-                f"source: {self._yaml_escape(record.source)}",
-                f"problem_id: {self._yaml_escape(record.id)}",
-                f"title: {self._yaml_escape(record.title)}",
-                f"original_url: {self._yaml_escape(record.url)}",
-                f"status: {self._yaml_escape(record.status.value)}",
+                f"来源: {self._yaml_escape(record.source)}",
+                f"题目ID: {self._yaml_escape(record.id)}",
+                f"标题: {self._yaml_escape(record.title)}",
+                f"原始链接: {self._yaml_escape(record.url)}",
+                f"状态: {self._yaml_escape(status_map.get(record.status, record.status.value))}",
             ]
         )
         if record.difficulty is not None:
-            lines.append(f"difficulty: {record.difficulty}")
+            lines.append(f"难度: {record.difficulty}")
         lines.extend(
             [
-                f"created_at: {self._yaml_escape(record.created_at.isoformat())}",
-                f"updated_at: {self._yaml_escape(record.updated_at.isoformat())}",
+                f"创建时间: {self._yaml_escape(record.created_at.isoformat())}",
+                f"更新时间: {self._yaml_escape(record.updated_at.isoformat())}",
                 "---",
                 "",
             ]
@@ -226,10 +231,10 @@ class FileManager:
 
         lines.extend(
             [
-                f"source: {self._yaml_escape(record.source)}",
-                f"problem_id: {self._yaml_escape(record.id)}",
-                f"title: {self._yaml_escape(record.title)}",
-                "type: solution",
+                f"来源: {self._yaml_escape(record.source)}",
+                f"题目ID: {self._yaml_escape(record.id)}",
+                f"标题: {self._yaml_escape(record.title)}",
+                "类型: 题解",
                 "---",
                 "",
             ]
@@ -246,8 +251,8 @@ class FileManager:
         relative_problem_md = os.path.relpath(problem_md_path, start=solution_path.parent).replace("\\", "/")
         reference_block = "\n".join(
             [
-                "## Problem Markdown Reference(原题)",
-                f"- [Open original problem markdown(打开原题)]({relative_problem_md})",
+                "## 原题引用",
+                f"- [打开原题]({relative_problem_md})",
                 "",
             ]
         )
@@ -264,67 +269,92 @@ class FileManager:
         return f"{reference_block}"
 
     def _build_problem_markdown(self, record: ProblemRecord) -> str:
+        settings = self.get_settings()
+        is_obsidian = settings.ui.obsidian_mode_enabled
+
+        status_map = {
+            ProblemStatus.solved: "已解决",
+            ProblemStatus.attempted: "尝试过",
+            ProblemStatus.unsolved: "未解决",
+        }
+        solution_status_map = {
+            SolutionStatus.none: "无",
+            SolutionStatus.queued: "排队中",
+            SolutionStatus.running: "进行中",
+            SolutionStatus.done: "已完成",
+            SolutionStatus.failed: "失败",
+        }
+        translation_status_map = {
+            TranslationStatus.none: "无",
+            TranslationStatus.running: "进行中",
+            TranslationStatus.done: "已完成",
+            TranslationStatus.failed: "失败",
+        }
+
         tags = ", ".join(record.tags) if record.tags else ""
-        lines = [
-            "# Problem",
-            "",
-            f"- source: {record.source}",
-            f"- id: {record.id}",
-            f"- title: {record.title}",
-            f"- original_url: {record.url}",
-            f"- status: {record.status.value}",
-            f"- needs_solution: {str(record.needs_solution).lower()}",
-            f"- solution_status: {record.solution_status.value}",
-            f"- solved_at: {record.solved_at.isoformat() if record.solved_at else ''}",
-            f"- difficulty: {record.difficulty or ''}",
-            f"- tags: {tags}",
-            f"- created_at: {record.created_at.isoformat()}",
-            f"- updated_at: {record.updated_at.isoformat()}",
-            "",
-            "## Description",
+        lines = []
+
+        if not is_obsidian:
+            lines.extend([
+                "# 题目信息",
+                "",
+                f"- 来源: {record.source}",
+                f"- 题目ID: {record.id}",
+                f"- 标题: {record.title}",
+                f"- 原始链接: {record.url}",
+                f"- 状态: {status_map.get(record.status, record.status.value)}",
+                f"- 需要题解: {'是' if record.needs_solution else '否'}",
+                f"- 题解状态: {solution_status_map.get(record.solution_status, record.solution_status.value)}",
+                f"- 解决时间: {record.solved_at.isoformat() if record.solved_at else ''}",
+                f"- 难度: {record.difficulty or ''}",
+                f"- 标签: {tags}",
+                f"- 创建时间: {record.created_at.isoformat()}",
+                f"- 更新时间: {record.updated_at.isoformat()}",
+                ""
+            ])
+
+        lines.extend([
+            "## 题目描述",
             record.content or "",
             "",
-            "## Input Format",
+            "## 输入格式",
             record.input_format or "",
             "",
-            "## Output Format",
+            "## 输出格式",
             record.output_format or "",
             "",
-            "## Constraints",
+            "## 数据范围",
             record.constraints or "",
             "",
-            "## Reflection",
+            "## 思考记录",
             record.reflection or "",
             "",
-        ]
+        ])
 
         if record.source.lower() == "codeforces":
             lines.extend(
                 [
-                    "## Chinese Translation",
-                    f"- translation_status: {record.translation_status.value}",
-                    f"- translation_updated_at: {record.translation_updated_at.isoformat() if record.translation_updated_at else ''}",
-                    f"- translation_error: {record.translation_error or ''}",
+                    "## 中文翻译",
+                    f"- 翻译状态: {translation_status_map.get(record.translation_status, record.translation_status.value)}",
+                    f"- 翻译更新时间: {record.translation_updated_at.isoformat() if record.translation_updated_at else ''}",
+                    f"- 翻译错误: {record.translation_error or ''}",
                     "",
-                    "### Title (ZH)",
-                    record.translated_title or "(empty)",
-                    "",
-                    "### Description (ZH)",
+                    "### 题目描述 (ZH)",
                     record.translated_content or "(empty)",
                     "",
-                    "### Input Format (ZH)",
+                    "### 输入格式 (ZH)",
                     record.translated_input_format or "(empty)",
                     "",
-                    "### Output Format (ZH)",
+                    "### 输出格式 (ZH)",
                     record.translated_output_format or "(empty)",
                     "",
-                    "### Constraints (ZH)",
+                    "### 数据范围 (ZH)",
                     record.translated_constraints or "(empty)",
                     "",
                 ]
             )
 
-        lines.append("## My AC Code")
+        lines.append("## 我的 AC 代码")
 
         if record.my_ac_code.strip():
             language = record.my_ac_language.strip() or "text"
@@ -336,11 +366,10 @@ class FileManager:
                 ]
             )
         else:
-            lines.append("(empty)")
+            lines.append("(暂无)")
 
         markdown = "\n".join(lines).rstrip() + "\n"
-        settings = self.get_settings()
-        if settings.ui.obsidian_mode_enabled:
+        if is_obsidian:
             return self._build_problem_frontmatter(record) + markdown
         return markdown
 
