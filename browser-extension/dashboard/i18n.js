@@ -1,4 +1,4 @@
-﻿// i18n translations for Dashboard
+// i18n translations for Dashboard
 export const translations = {
     en: {
         // Brand / Nav
@@ -16,6 +16,7 @@ export const translations = {
         stat_pending: 'Pending',
         stat_running: 'Running',
         stat_failed: 'Failed',
+        btn_export_data: 'Export Data',
         section_pending_solutions: 'Pending Solutions',
         btn_generate_all: 'Generate All',
         section_tasks: 'Tasks',
@@ -284,6 +285,7 @@ export const translations = {
         stat_pending: '待处理',
         stat_running: '运行中',
         stat_failed: '失败',
+        btn_export_data: '导出数据',
         section_pending_solutions: '待生成题解',
         btn_generate_all: '全部生成',
         section_tasks: '任务列表',

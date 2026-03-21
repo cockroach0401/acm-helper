@@ -530,9 +530,9 @@ function renderProblemList(items) {
   }
 
   tbody.innerHTML = items.map(p => {
-    const isCf = p.source === 'codeforces';
+    const isTransSupported = p.source === 'codeforces' || p.source === 'atcoder';
     const transStatus = p.translation_status || 'none';
-    const isTranslated = isCf && transStatus === 'done';
+    const isTranslated = isTransSupported && transStatus === 'done';
     const key = `${p.source}:${p.id}`;
     const safeKey = key.replace(/[^a-zA-Z0-9]/g, '-');
     const tags = Array.isArray(p.tags) ? p.tags.filter(Boolean) : [];
@@ -558,10 +558,9 @@ function renderProblemList(items) {
     // Edit
     actions.push(`<button class="btn btn-sm btn-secondary action-edit" data-s="${p.source}" data-i="${p.id}" data-k="${key}">${t('btn_generate') === 'Generate' ? 'Edit' : '编辑'}</button>`);
 
-    // Translate (Only CF)
-    if (isCf && !isTranslated) {
-      actions.push(`<button class="btn btn-sm btn-secondary action-trans" data-s="${p.source}" data-i="${p.id}">${t('btn_translate')}</button>`);
-    }
+    // Translate (Always show, enabled for CF and AtCoder)
+    const canTranslate = isTransSupported;
+    actions.push(`<button class="btn btn-sm btn-secondary action-trans" data-s="${p.source}" data-i="${p.id}" ${canTranslate ? '' : 'disabled'}>${t('btn_translate')}</button>`);
 
     // Generate Sol
     actions.push(`<button class="btn btn-sm btn-secondary action-gen" data-key="${key}">${t('btn_generate')}</button>`);
@@ -2015,8 +2014,8 @@ function renderActivityHeatmap(dailyData, fromDateStr, toDateStr) {
     totalCount += d.solved_count;
   });
 
-  const boxSize = 14;
-  const gap = 3;
+  const boxSize = 11;
+  const gap = 2;
   const days = 7;
 
   // Determine date range
@@ -2055,9 +2054,9 @@ function renderActivityHeatmap(dailyData, fromDateStr, toDateStr) {
 
   // Day labels
   const dayLabels = [
-    { y: topPad + 1 * (boxSize + gap) + 10, text: t('heatmap_mon') || 'Mon' },
-    { y: topPad + 3 * (boxSize + gap) + 10, text: t('heatmap_wed') || 'Wed' },
-    { y: topPad + 5 * (boxSize + gap) + 10, text: t('heatmap_fri') || 'Fri' }
+    { y: topPad + 1 * (boxSize + gap) + 8, text: t('heatmap_mon') || 'Mon' },
+    { y: topPad + 3 * (boxSize + gap) + 8, text: t('heatmap_wed') || 'Wed' },
+    { y: topPad + 5 * (boxSize + gap) + 8, text: t('heatmap_fri') || 'Fri' }
   ];
   dayLabels.forEach(lbl => {
     svgContent += `<text x="0" y="${lbl.y}" style="font-size:10px; fill:var(--text-muted);">${lbl.text}</text>`;
@@ -2136,7 +2135,7 @@ function renderActivityHeatmap(dailyData, fromDateStr, toDateStr) {
   `;
 
   container.innerHTML = `
-    <div style="width: 100%; overflow-x: auto;">
+    <div style="width: 100%; overflow: hidden; display: flex; justify-content: center;">
       <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMinYMin meet" style="display: block; margin: 0 auto;">
         ${svgContent}
       </svg>
@@ -2194,48 +2193,46 @@ function initHeatmapTooltip(container) {
 
 function renderWeeklyBarChart(weeklyData) {
   const container = $('#chart-weekly-bar');
-  // Take last 12 weeks
-  const data = weeklyData.slice(-12);
+  if (!container) return;
+
+  const data = (weeklyData || []).slice(-7); // Show last 7 days/weeks to fit Bento grid
   if (data.length === 0) {
-    container.innerHTML = `< div style = "text-align:center;color:var(--text-muted)" > No data</div > `;
+    container.innerHTML = `<div style="text-align:center;color:var(--text-muted);width:100%" data-i18n="msg_no_weekly_data">No data</div>`;
     return;
   }
 
-  const maxVal = Math.max(...data.map(d => d.solved_count), 5); // at least 5 y-scale
-  const barWidth = 20;
-  const gap = 10;
-  const height = 150;
-  const width = data.length * (barWidth + gap);
+  const maxVal = Math.max(...data.map(d => Number(d.solved_count || 0)), 5);
+  const labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S']; // Fallback labels
 
-  let defs = `
-        <defs>
-        <linearGradient id="weekly-grad" x1="0%" y1="100%" x2="0%" y2="0%">
-          <stop offset="0%" stop-color="var(--accent-primary)" stop-opacity="0.6" />
-          <stop offset="100%" stop-color="#8b5cf6" stop-opacity="1.0" />
-        </linearGradient>
-        </defs>
-        `;
+  container.innerHTML = data.map((d, i) => {
+    const heightPercent = Math.round((Number(d.solved_count || 0) / maxVal) * 100);
+    const date = d.period_start ? new Date(d.period_start) : null;
+    const label = date ? date.toLocaleDateString(getLang() === 'zh' ? 'zh-CN' : 'en-US', { weekday: 'short' }) : (labels[i] || '');
+    
+    return `
+      <div class="progress-bar-group">
+        <div class="progress-bar-rail" title="${d.period_start}: ${d.solved_count}">
+          <div class="progress-bar-fill" style="height: ${heightPercent}%; animation-delay: ${i * 50}ms;"></div>
+        </div>
+        <span class="progress-day-label">${label}</span>
+      </div>
+    `;
+  }).join('');
 
-  let svg = '';
-
-  data.forEach((d, i) => {
-    let rawH = (d.solved_count / maxVal) * (height - 20);
-    const h = Math.max(rawH, 4); // Min height of 4px
-    const x = i * (barWidth + gap);
-    const y = height - h - 20; // 20px padding bottom for labels
-
-    const fillClass = d.solved_count > 0 ? 'chart-bar active-bar' : 'chart-bar empty-bar';
-    const fillValue = d.solved_count > 0 ? 'url(#weekly-grad)' : 'var(--heatmap-0)';
-
-    svg += `<rect x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="4" fill="${fillValue}" class="${fillClass}" style="transform-origin: ${x + barWidth / 2}px ${height - 20}px; animation-delay: ${i * 40}ms;">
-        <title>${d.period_start}: ${d.solved_count}</title>
-        </rect>`;
-    // Label: always show for up to 12 items
-    const label = d.period_start.slice(5);
-    svg += `<text x="${x + barWidth / 2}" y="${height - 5}" font-size="10" fill="var(--text-secondary)" text-anchor="middle">${label}</text>`;
-  });
-
-  container.innerHTML = `<svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">${defs}${svg}</svg>`;
+  // Update diff stat visually (just a mockup for now as per design)
+  const diffEl = $('#weekly-diff-stat');
+  if (diffEl && data.length >= 2) {
+    const last = Number(data[data.length - 1].solved_count || 0);
+    const prev = Number(data[data.length - 2].solved_count || 0);
+    if (prev > 0) {
+      const diff = (((last - prev) / prev) * 100).toFixed(1);
+      const sign = diff >= 0 ? '+' : '';
+      diffEl.textContent = `${sign}${diff}%`;
+      diffEl.style.color = diff >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
+    } else {
+      diffEl.textContent = last > 0 ? '+100%' : '0%';
+    }
+  }
 }
 
 function summarizeWeeklyData(weeklyData) {
@@ -2358,10 +2355,12 @@ function renderTagsDonutChart(tagsDistribution) {
       </path>`);
 
     legends.push(`
-      <div class="chart-tags-legend-item" data-index="${i}" title="${escapeHtml(row.tag)}" style="animation-delay: ${i * 40}ms;">
-        <span class="chart-tags-legend-color" style="background: linear-gradient(135deg, ${gradient.start}, ${gradient.end})"></span>
-        <span class="chart-tags-legend-label">${escapeHtml(row.tag)}</span>
-        <span class="chart-tags-legend-count-pill">${row.count}</span>
+      <div class="tag-legend-item" data-index="${i}" title="${escapeHtml(row.tag)}" style="animation-delay: ${i * 40}ms;">
+        <div class="tag-dot-wrapper">
+          <div class="tag-dot" style="background: linear-gradient(135deg, ${gradient.start}, ${gradient.end})"></div>
+          <span class="tag-name">${escapeHtml(row.tag)}</span>
+        </div>
+        <span class="tag-count-pill">${row.count}</span>
       </div>
     `);
 
@@ -2384,7 +2383,7 @@ function renderTagsDonutChart(tagsDistribution) {
 
   // Interactivity
   const segs = ringContainer.querySelectorAll('.chart-tags-segment');
-  const items = legendContainer.querySelectorAll('.chart-tags-legend-item');
+  const items = legendContainer.querySelectorAll('.tag-legend-item');
 
   function highlight(index, active) {
     segs.forEach(s => {

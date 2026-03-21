@@ -236,95 +236,136 @@
 
     <!-- VIEW: Reports -->
     <div id="view-reports" class="view">
-      <div class="page-header">
-        <h1 class="page-title" data-i18n="page_reports">Statistics & Reports</h1>
+      <!-- Page Header -->
+      <div class="reports-header flex-center-between">
+        <div>
+          <h2 class="reports-title text-on-surface" data-i18n="page_reports">Statistics & Reports</h2>
+          <p class="reports-subtitle">Execution successful. Rendering dataset v2.4.0</p>
+        </div>
       </div>
 
-      <!-- Statistics Section with Charts -->
-      <div class="section-card">
-        <div class="section-header">
-          <h2 class="section-title" data-i18n="section_statistics">Statistics</h2>
-        </div>
-
-        <div id="charts-container" style="display: flex; flex-direction: column; gap: 2rem;">
-          <!-- Chart 1: Activity Heatmap -->
-          <div>
-            <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.5rem;">
-              <h3 style="font-size: 0.9rem; margin-bottom: 0; color: var(--text-secondary);"
-                data-i18n="chart_activity">Activity</h3>
-              <select id="heatmap-mode" style="font-size: 0.7rem; padding: 0.1rem 0.3rem; width: auto; max-width: 5rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
+      <!-- Bento Grid Section -->
+      <div class="reports-v4-grid">
+        <!-- Activity Heatmap -->
+        <div class="reports-v4-card col-span-8">
+          <div class="flex-center-between mb-8" style="margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <span class="material-symbols-outlined" style="color: var(--primary); font-variation-settings: 'FILL' 1;">grid_view</span>
+              <h3 class="section-title" data-i18n="chart_activity">Activity Heatmap</h3>
+            </div>
+            <div style="max-width: 100px;">
+              <select id="heatmap-mode" class="heatmap-mode-selector" style="width: 100%;">
                 <option value="year" data-i18n="heatmap_mode_year">Year</option>
                 <option value="365" data-i18n="heatmap_mode_365">365d</option>
               </select>
             </div>
-            <div id="chart-activity-heatmap" class="heatmap-container">
-              <!-- JS Injected SVG -->
-              <div style="text-align:center; padding: 2rem; color: var(--text-muted);">Loading Activity...</div>
+          </div>
+          <div id="chart-activity-heatmap" class="heatmap-container" style="min-height: 150px; border: none; background: transparent; overflow: hidden;">
+            <div style="text-align:center; padding: 2rem; color: var(--text-muted);" data-i18n="msg_loading">Loading...</div>
+          </div>
+        </div>
+
+        <!-- Weekly Progress -->
+        <div class="reports-v4-card col-span-4 flex flex-col">
+          <div class="flex-center-between mb-8" style="margin-bottom: 2rem;">
+            <h3 class="section-title" data-i18n="chart_weekly">Weekly Progress</h3>
+            <span id="weekly-diff-stat" class="font-mono" style="color: var(--primary); font-size: 11px;">+12.5%</span>
+          </div>
+          <div id="chart-weekly-bar" class="weekly-progress-container" style="flex: 1; min-height: 160px; background: transparent;">
+            <!-- Rendered by JS -->
+          </div>
+          <div id="weekly-visual-summary" class="helper-note" style="margin-top: 1rem; font-size: 10px; color: var(--text-muted); font-family: var(--font-mono);"></div>
+        </div>
+
+        <!-- Tags Distribution -->
+        <div class="reports-v4-card col-span-8 flex flex-col">
+          <h3 class="section-title" style="margin-bottom: 2rem;" data-i18n="chart_tags_solved">Tags Distribution</h3>
+          <div id="chart-tags-donut" class="tags-distribution-layout">
+            <div id="chart-tags-ring" class="donut-wrapper" style="background: transparent;">
+              <!-- Rendered by JS -->
+            </div>
+            <div id="chart-tags-legend" class="tags-legend" style="grid-template-columns: repeat(2, 1fr); width: 100%;">
+              <!-- Rendered by JS (2 columns for wider layout) -->
             </div>
           </div>
+        </div>
 
-          <!-- Chart 2: Weekly Progress -->
-          <div>
-            <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);"
-              data-i18n="chart_weekly">Weekly Progress</h3>
-            <div id="chart-weekly-bar" class="chart-bar-container">
-              <!-- JS Injected SVG -->
-            </div>
-            <div id="weekly-visual-summary" class="helper-note" style="margin-top:0.5rem;"></div>
-          </div>
-
-          <!-- Chart 3: Tags Solved -->
-          <div>
-            <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);"
-              data-i18n="chart_tags_solved">Tags Solved</h3>
-            <div id="chart-tags-donut" class="chart-tags-container">
-              <div id="chart-tags-ring" class="chart-tags-ring">
-                <div style="text-align:center; padding: 2rem; color: var(--text-muted);">Loading...</div>
+        <!-- Report Generation Cards -->
+        <div class="col-span-4 grid" style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
+          <!-- Weekly Insight -->
+          <div class="action-card-wrapper action-card-weekly group">
+            <div class="glass-card action-card-content">
+              <div class="flex-center-between" style="margin-bottom: 1.5rem;">
+                <div class="action-card-icon" style="background: rgba(99, 102, 241, 0.1); color: var(--primary);">
+                  <span class="material-symbols-outlined">calendar_view_week</span>
+                </div>
+                <span class="action-card-badge" style="color: var(--primary); border: 1px solid rgba(99, 102, 241, 0.2);">RECURRING</span>
               </div>
-              <div id="chart-tags-legend" class="chart-tags-legend"></div>
+              <h4 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;" data-i18n="card_weekly_report">Weekly Insight</h4>
+              <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.5;" data-i18n="report_hint">Automated performance summary for the current sprint.</p>
+              
+              <div style="margin-top: auto; display: flex; flex-direction: column; gap: 1rem;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;" data-i18n="label_select_week">Select Week</label>
+                  <input id="week-picker" type="week" style="background: var(--surface-container-highest); border: none;" />
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button id="btn-gen-weekly" class="btn-primary-gradient" style="flex: 1;" data-i18n="btn_generate">Generate</button>
+                  <button id="btn-view-weekly" class="btn-icon-only"><span class="material-symbols-outlined" style="font-size: 20px;">visibility</span></button>
+                </div>
+              </div>
+              <div id="status-weekly" style="margin-top: 0.75rem; font-size: 0.75rem; font-family: var(--font-mono);"></div>
+            </div>
+          </div>
+
+          <!-- Phased Report -->
+          <div class="action-card-wrapper action-card-phased">
+            <div class="glass-card action-card-content">
+              <div class="flex-center-between" style="margin-bottom: 1.5rem;">
+                <div class="action-card-icon" style="background: rgba(217, 119, 33, 0.1); color: var(--tertiary);">
+                  <span class="material-symbols-outlined">timeline</span>
+                </div>
+                <span class="action-card-badge" style="color: var(--tertiary); border: 1px solid rgba(217, 119, 33, 0.2);">CUSTOM</span>
+              </div>
+              <h4 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;" data-i18n="card_phased_report">Phased Report</h4>
+              <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.5;">Deep dive into a specific training phase with historical data.</p>
+              
+              <div style="margin-top: auto; display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 10px; text-transform: uppercase;" data-i18n="label_select_start_week">Start</label>
+                    <input id="phased-start-week" type="week" style="background: var(--surface-container-highest); border: none;" />
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 10px; text-transform: uppercase;" data-i18n="label_select_end_week">End</label>
+                    <input id="phased-end-week" type="week" style="background: var(--surface-container-highest); border: none;" />
+                  </div>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button id="btn-gen-phased" class="btn-tertiary-gradient" style="flex: 1;" data-i18n="btn_generate">Analyze</button>
+                  <button id="btn-view-phased" class="btn-icon-only"><span class="material-symbols-outlined" style="font-size: 20px;">description</span></button>
+                </div>
+              </div>
+              <div id="status-phased" style="margin-top: 0.75rem; font-size: 0.75rem; font-family: var(--font-mono);"></div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Weekly Report Section -->
-      <div class="section-card">
-        <div class="section-header">
-          <h2 class="section-title" data-i18n="card_weekly_report">Weekly Report</h2>
-        </div>
-        <div class="form-group">
-          <label data-i18n="label_select_week">Select Week</label>
-          <input id="week-picker" type="week" />
-        </div>
-        <div class="row-actions">
-          <button id="btn-gen-weekly" class="btn" data-i18n="btn_generate">Generate</button>
-          <button id="btn-view-weekly" class="btn btn-secondary" data-i18n="btn_view_report">View Report</button>
-        </div>
-        <div id="status-weekly" style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted);"></div>
-        <pre id="weekly-report-preview" class="hidden" style="margin-top: 1rem;"></pre>
-      </div>
+      <!-- Preview Sections -->
+      <pre id="weekly-report-preview" class="hidden" style="margin-top: 2rem; max-height: 400px;"></pre>
+      <pre id="phased-report-preview" class="hidden" style="margin-top: 2rem; max-height: 400px;"></pre>
 
-      <div class="section-card">
-        <div class="section-header">
-          <h2 class="section-title" data-i18n="card_phased_report">Phased Report</h2>
+      <!-- Footer Decorative -->
+      <footer class="reports-footer">
+        <div class="footer-system-info">
+          <span><span class="status-dot dot-primary"></span> System Online</span>
+          <span><span class="status-dot dot-secondary"></span> Sync Status: 100%</span>
         </div>
-        <div class="card-grid" style="grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-          <div class="form-group">
-            <label data-i18n="label_select_start_week">Start Week</label>
-            <input id="phased-start-week" type="week" />
-          </div>
-          <div class="form-group">
-            <label data-i18n="label_select_end_week">End Week</label>
-            <input id="phased-end-week" type="week" />
-          </div>
+        <div style="font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;">
+          DESIGN_SPEC: V4.1_ARCHITECT_REPORTS
         </div>
-        <div class="row-actions">
-          <button id="btn-gen-phased" class="btn" data-i18n="btn_generate">Generate</button>
-          <button id="btn-view-phased" class="btn btn-secondary" data-i18n="btn_view_report">View Report</button>
-        </div>
-        <div id="status-phased" style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted);"></div>
-        <pre id="phased-report-preview" class="hidden" style="margin-top: 1rem;"></pre>
-      </div>
+      </footer>
     </div>
 
     <!-- VIEW: Settings -->
