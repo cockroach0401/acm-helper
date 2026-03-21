@@ -370,7 +370,7 @@ button.btn {
   font-weight: 600;
   font-size: 0.925rem;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
 }
 
 button.btn:hover {
@@ -408,12 +408,14 @@ button.btn-sm {
 
 button.btn-danger {
   background-color: var(--bg-input);
-  color: var(--accent-danger);
-  border: 1px solid var(--accent-danger);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
 }
 
 button.btn-danger:hover {
   background-color: rgba(239, 68, 68, 0.1);
+  color: var(--accent-danger);
+  border: 1px solid var(--accent-danger);
 }
 
 button:disabled {
