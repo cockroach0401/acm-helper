@@ -1,9 +1,13 @@
-﻿<!doctype html>
+<!doctype html>
 <html>
 
 <head>
   <meta charset="utf-8" />
   <title>ACM Helper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="dashboard.css" />
 </head>
 
@@ -22,86 +26,42 @@
   </div>
 
   <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="brand">
-      <div class="brand-icon">
-        <img src="../1.png" alt="ACM Helper" class="brand-icon-image" />
+  <aside class="sidebar font-headline shadow-2xl">
+    <div class="px-6 mb-10">
+      <div class="flex items-center gap-3 mb-1" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem;">
+        <span class="text-xl font-bold tracking-tight" style="color: var(--primary); font-size: 1.25rem; font-weight: 700;">ACM Helper</span>
       </div>
-      <div class="brand-text" data-i18n="brand">ACM Helper</div>
+      <p class="text-on-surface-variant font-mono" style="font-size: 10px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em; opacity: 0.6;">The Disciplined Architect</p>
     </div>
+
     <nav class="nav-links">
       <button class="nav-item active" data-view="dashboard">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect width="7" height="9" x="3" y="3" rx="1" />
-          <rect width="7" height="5" x="14" y="3" rx="1" />
-          <rect width="7" height="9" x="14" y="12" rx="1" />
-          <rect width="7" height="5" x="3" y="16" rx="1" />
-        </svg>
+        <span class="material-symbols-outlined">dashboard</span>
         <span data-i18n="nav_dashboard">Dashboard</span>
       </button>
       <button class="nav-item" data-view="problems">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-          <path d="M16 13H8" />
-          <path d="M16 17H8" />
-          <path d="M10 9H8" />
-        </svg>
+        <span class="material-symbols-outlined">code</span>
         <span data-i18n="nav_problems">Problems</span>
       </button>
       <button class="nav-item" data-view="reports">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-          <polyline points="14 2 14 8 20 8" />
-          <path d="M8 13h2" />
-          <path d="M8 17h2" />
-          <path d="M14 13h2" />
-          <path d="M14 17h2" />
-        </svg>
+        <span class="material-symbols-outlined">assessment</span>
         <span data-i18n="nav_reports">Reports</span>
       </button>
       <button class="nav-item" data-view="settings">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path
-            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-          <circle cx="12" cy="12" r="3" />
-        </svg>
+        <span class="material-symbols-outlined">settings</span>
         <span data-i18n="nav_settings">Settings</span>
       </button>
     </nav>
 
     <!-- Language & Theme Toggle -->
-    <div class="sidebar-footer">
-      <button id="lang-toggle" class="footer-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-          <path d="M2 12h20" />
-        </svg>
-        <span id="lang-label">中文</span>
+    <div class="sidebar-footer" style="padding: 1.5rem; border-top: 1px solid var(--border-color); margin-top: auto; display: flex; gap: 0.5rem;">
+      <button id="lang-toggle" class="footer-btn" style="flex: 1; display: flex; align-items: center; justify-content: center; background: var(--surface-container-highest); border: none; border-radius: 0.5rem; color: var(--on-surface-variant); cursor: pointer; padding: 0.5rem;">
+        <span class="material-symbols-outlined" style="font-size: 18px; margin-right: 4px;">translate</span>
+        <span id="lang-label" style="font-size: 12px; font-weight: 600;">中文</span>
       </button>
-      <button id="theme-toggle" class="footer-btn">
-        <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-        </svg>
-        <svg id="icon-sun" class="hidden" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="5"></circle>
-          <line x1="12" y1="1" x2="12" y2="3"></line>
-          <line x1="12" y1="21" x2="12" y2="23"></line>
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-          <line x1="1" y1="12" x2="3" y2="12"></line>
-          <line x1="21" y1="12" x2="23" y2="12"></line>
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-        </svg>
+      <button id="theme-toggle" class="footer-btn" style="flex: 1; display: flex; align-items: center; justify-content: center; background: var(--surface-container-highest); border: none; border-radius: 0.5rem; color: var(--on-surface-variant); cursor: pointer; padding: 0.5rem;">
+        <span id="icon-moon" class="material-symbols-outlined" style="font-size: 18px;">dark_mode</span>
+        <span id="icon-sun" class="material-symbols-outlined hidden" style="font-size: 18px;">light_mode</span>
       </button>
     </div>
   </aside>
@@ -369,157 +329,218 @@
 
     <!-- VIEW: Settings -->
     <div id="view-settings" class="view">
-      <div class="page-header">
-        <h1 class="page-title" data-i18n="page_settings">Settings</h1>
+      <div class="page-header" style="margin-bottom: 2.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.5rem;">
+        <div>
+          <h1 class="page-title" data-i18n="page_settings">Settings</h1>
+          <p style="color: var(--text-muted); font-family: var(--font-mono); font-size: 0.8rem; margin-top: 0.4rem;">Configure your LLM integrations, prompt templates and workspace.</p>
+        </div>
       </div>
 
-      <div class="card-grid" style="grid-template-columns: 1fr 1fr;">
-        <div class="section-card">
-          <div class="section-header">
-            <h2 class="section-title" data-i18n="section_ai_provider">AI Provider</h2>
-            <div class="row-actions">
-              <button id="add-ai-provider-btn" class="btn btn-secondary" data-i18n="btn_add_provider">Add
-                Provider</button>
-              <button id="test-ai-btn" class="btn btn-secondary" data-i18n="btn_test">Test</button>
-            </div>
+      <div class="settings-grid">
+        <!-- AI Provider Section -->
+        <section class="settings-section">
+          <div class="settings-section-title">
+            <span class="material-symbols-outlined" style="font-size: 20px;">smart_toy</span>
+            <h2 data-i18n="section_ai_provider">AI Provider</h2>
           </div>
-          <div class="ai-settings-layout">
-            <div class="form-group">
-              <label data-i18n="label_provider_profiles">Providers</label>
-              <div id="ai-profile-list" class="ai-profile-list"></div>
-            </div>
-            <div>
-              <div class="form-group">
-                <label data-i18n="label_provider_name">Provider Name</label>
-                <input id="ai-provider-name" type="text" placeholder="e.g. OpenAI Main" />
+          
+          <div class="ai-provider-layout">
+            <!-- Provider List (Left) -->
+            <div class="ai-profile-list-v2">
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; margin-bottom: 0.5rem;">
+                <span class="text-on-surface-variant font-mono" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;" data-i18n="label_provider_profiles">Profiles</span>
+                <button id="add-ai-provider-btn" class="text-primary-color hover:opacity-80 transition-opacity" title="Add Provider">
+                  <span class="material-symbols-outlined" style="font-size: 20px;">add_circle</span>
+                </button>
               </div>
-              <div class="form-group">
-                <label data-i18n="label_provider">Provider</label>
-                <select id="ai-provider">
-                  <option value="openai_compatible">OpenAI Compatible</option>
-                  <option value="anthropic">Anthropic</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label data-i18n="label_api_base">API Base URL</label>
-                <input id="ai-api-base" type="text" placeholder="e.g. http://localhost:11434/v1" />
-              </div>
-              <div class="form-group">
-                <label data-i18n="label_api_key">API Key</label>
-                <input id="ai-api-key" type="password" />
-              </div>
-              <div class="form-group">
-                <label data-i18n="label_model">Model</label>
-                <input id="ai-model" list="ai-model-datalist" placeholder="Select or type model..." />
-                <datalist id="ai-model-datalist"></datalist>
-                <textarea id="ai-model-options" class="hidden"></textarea>
-              </div>
-              <div class="form-group">
-                <div style="display:flex; gap:10px;">
-                  <div style="flex:1">
-                    <label data-i18n="label_temperature">Temperature</label>
-                    <input id="ai-temperature" type="number" step="0.1" min="0" max="2" />
+              
+              <div id="ai-profile-list">
+                <!-- Profiles Rendered by JS -->
+                <!-- Example structure from code.html:
+                <div class="ai-profile-item-v2 active">
+                  <div>
+                    <div class="name">OpenAI Global</div>
+                    <div class="model">gpt-4-turbo</div>
                   </div>
-                  <div style="flex:1">
-                    <label data-i18n="label_timeout">Timeout (s)</label>
-                    <input id="ai-timeout" type="number" />
+                  <span class="badge">Active</span>
+                </div>
+                -->
+              </div>
+            </div>
+
+            <!-- Config Form (Right) -->
+            <div class="settings-card">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="form-group">
+                  <label class="text-on-surface-variant font-mono" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;" data-i18n="label_provider_name">Profile Name</label>
+                  <input id="ai-provider-name" type="text" placeholder="e.g. OpenAI Main" style="background-color: var(--surface-container-highest); border: none; padding: 0.75rem 1rem;" />
+                </div>
+                <div class="form-group">
+                  <label class="text-on-surface-variant font-mono" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;" data-i18n="label_provider">Provider Type</label>
+                  <select id="ai-provider" style="background-color: var(--surface-container-highest); border: none; padding: 0.75rem 1rem;">
+                    <option value="openai_compatible">OpenAI Compatible</option>
+                    <option value="anthropic">Anthropic</option>
+                  </select>
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                  <label class="text-on-surface-variant font-mono" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;" data-i18n="label_api_base">Base URL</label>
+                  <input id="ai-api-base" type="text" placeholder="e.g. http://localhost:11434/v1" style="background-color: var(--surface-container-highest); border: none; padding: 0.75rem 1rem; font-family: var(--font-mono);" />
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                  <label class="text-on-surface-variant font-mono" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;" data-i18n="label_api_key">API Key</label>
+                  <div style="position: relative;">
+                    <input id="ai-api-key" type="password" style="background-color: var(--surface-container-highest); border: none; padding: 0.75rem 1rem; padding-right: 3rem; font-family: var(--font-mono);" />
+                    <span class="material-symbols-outlined" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: var(--on-surface-variant); cursor: pointer; font-size: 20px;">visibility</span>
                   </div>
                 </div>
+                <div class="form-group">
+                  <label class="text-on-surface-variant font-mono" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;" data-i18n="label_model">Primary Model</label>
+                  <input id="ai-model" list="ai-model-datalist" placeholder="Select or type model..." style="background-color: var(--surface-container-highest); border: none; padding: 0.75rem 1rem; font-family: var(--font-mono);" />
+                  <datalist id="ai-model-datalist"></datalist>
+                  <textarea id="ai-model-options" class="hidden"></textarea>
+                </div>
+                <div class="form-group">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <label class="text-on-surface-variant font-mono" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0;" data-i18n="label_temperature">Temperature</label>
+                    <span id="temperature-display" class="font-mono" style="font-size: 12px; color: var(--primary);">0.2</span>
+                  </div>
+                  <input id="ai-temperature" type="range" step="0.1" min="0" max="2" value="0.2" style="width: 100%; height: 6px; background-color: var(--surface-container-highest); border-radius: 99px; appearance: none; cursor: pointer;" />
+                  <!-- Hidden input for backward compatibility if JS needs a number input -->
+                  <input id="ai-timeout" type="number" class="hidden" />
+                </div>
               </div>
+              
+              <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); display: flex; align-items: center; gap: 1rem;">
+                <button id="save-ai-btn" class="btn" style="background-color: var(--accent-primary); color: white; border-radius: 9999px; padding: 0.5rem 1.5rem; font-weight: 700;" data-i18n="btn_save_ai">Save AI Profile</button>
+                <button id="test-ai-btn" class="btn btn-secondary" style="border-radius: 9999px; padding: 0.5rem 1.25rem;" data-i18n="btn_test">Test Connection</button>
+                <span style="margin-left: auto; font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono);">Changes are per-profile and saved independently.</span>
+              </div>
+              <pre id="ai-test-result" class="hidden" style="margin-top: 1.5rem; background-color: var(--surface-container-lowest); font-size: 0.75rem;"></pre>
             </div>
           </div>
-          <div class="row-actions" style="margin-top:1rem;">
-            <button id="save-ai-btn" class="btn" data-i18n="btn_save_ai">Save AI Settings</button>
-          </div>
-          <pre id="ai-test-result" class="hidden" style="margin-top:1rem;"></pre>
-        </div>
+        </section>
 
-        <div class="section-card">
-          <div class="section-header">
-            <h2 class="section-title" data-i18n="section_templates">Prompt Templates & UI</h2>
+        <!-- Prompt Templates Section -->
+        <section class="settings-section">
+          <div class="settings-section-title">
+            <span class="material-symbols-outlined" style="font-size: 20px;">terminal</span>
+            <h2 data-i18n="section_templates">Prompt Templates</h2>
           </div>
-          <div class="form-group">
-            <label data-i18n="label_weekly_prompt_style">Weekly Prompt Style</label>
-            <select id="weekly-prompt-style">
-              <option value="custom" data-i18n="style_custom">Custom</option>
-              <option value="rigorous" data-i18n="style_rigorous">Rigorous (strict derivation and proof)</option>
-              <option value="intuitive" data-i18n="style_intuitive">Intuitive (Ramanujan stare method)</option>
-              <option value="concise" data-i18n="style_concise">Concise (too many words, keep short)</option>
-            </select>
-            <div class="helper-note" data-i18n="hint_style_options">Choose a style to auto-inject prompt guidance into
-              solution generation.</div>
-          </div>
-          <div class="form-group">
-            <label data-i18n="label_weekly_style_injections">Weekly Style Prompt Injection Slots</label>
-            <textarea id="style-injection-custom" class="hidden" rows="10"
-              data-i18n-placeholder="placeholder_style_injection_custom"></textarea>
-            <textarea id="style-injection-rigorous" class="hidden" rows="10"
-              data-i18n-placeholder="placeholder_style_injection_rigorous"></textarea>
-            <textarea id="style-injection-intuitive" class="hidden" rows="10"
-              data-i18n-placeholder="placeholder_style_injection_intuitive" style="margin-top:0.5rem;"></textarea>
-            <textarea id="style-injection-concise" class="hidden" rows="10"
-              data-i18n-placeholder="placeholder_style_injection_concise" style="margin-top:0.5rem;"></textarea>
-          </div>
-          <div class="form-group">
-            <div class="template-header-row">
-              <label data-i18n="label_solution_template">Solution Prompt Template</label>
-              <div class="row-actions">
-                <button id="reset-solution-template-btn" type="button" class="btn btn-secondary btn-sm" data-i18n="btn_reset_default">Reset Default</button>
-                <button id="toggle-solution-template-vars-btn" type="button" class="btn btn-secondary btn-sm">Show Variables</button>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <!-- Solution Prompt -->
+            <div class="settings-card" style="padding: 1.5rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 class="font-headline" style="font-weight: 700; color: var(--on-surface);" data-i18n="label_solution_template">Solution Prompt Template</h3>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button id="reset-solution-template-btn" class="btn btn-sm btn-secondary" style="font-size: 10px; font-weight: 700;" data-i18n="btn_reset_default">Reset Default</button>
+                  <button id="toggle-solution-template-vars-btn" class="btn btn-sm btn-secondary" style="font-size: 10px; font-weight: 700; color: var(--primary); background-color: rgba(99, 102, 241, 0.1);">Variables</button>
+                </div>
+              </div>
+              <textarea id="solution-template" rows="12" style="background-color: var(--surface-container-lowest); border: none; padding: 1rem; line-height: 1.6; font-size: 0.85rem;"></textarea>
+              <div id="solution-template-vars-panel" class="hidden" style="margin-top: 1rem; padding: 1rem; background-color: var(--surface-container-lowest); border-radius: 0.5rem;">
+                <div class="font-mono" style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--on-surface-variant); margin-bottom: 0.5rem;" data-i18n="label_solution_template_vars">Available Variables</div>
+                <pre id="solution-template-variables" style="font-size: 0.75rem; padding: 0; background: none;"></pre>
               </div>
             </div>
-            <textarea id="solution-template" rows="8"></textarea>
-            <div id="solution-template-vars-panel" class="template-vars-panel hidden">
-              <div class="template-vars-title" data-i18n="label_solution_template_vars">Solution Template Variables</div>
-              <pre id="solution-template-variables"></pre>
-            </div>
-          </div>
-          <div class="form-group">
-            <div class="template-header-row">
-              <label data-i18n="label_weekly_template">Weekly Prompt Template</label>
-              <div class="row-actions">
-                <button id="reset-weekly-template-btn" type="button" class="btn btn-secondary btn-sm" data-i18n="btn_reset_default">Reset Default</button>
-                <button id="toggle-weekly-template-vars-btn" type="button" class="btn btn-secondary btn-sm">Show Variables</button>
+
+            <!-- Weekly Prompt -->
+            <div class="settings-card" style="padding: 1.5rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 class="font-headline" style="font-weight: 700; color: var(--on-surface);" data-i18n="label_weekly_template">Weekly Prompt Template</h3>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button id="reset-weekly-template-btn" class="btn btn-sm btn-secondary" style="font-size: 10px; font-weight: 700;" data-i18n="btn_reset_default">Reset Default</button>
+                  <button id="toggle-weekly-template-vars-btn" class="btn btn-sm btn-secondary" style="font-size: 10px; font-weight: 700; color: var(--primary); background-color: rgba(99, 102, 241, 0.1);">Variables</button>
+                </div>
+              </div>
+              <textarea id="weekly-template" rows="12" style="background-color: var(--surface-container-lowest); border: none; padding: 1rem; line-height: 1.6; font-size: 0.85rem;"></textarea>
+              <div id="weekly-template-vars-panel" class="hidden" style="margin-top: 1rem; padding: 1rem; background-color: var(--surface-container-lowest); border-radius: 0.5rem;">
+                <div class="font-mono" style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--on-surface-variant); margin-bottom: 0.5rem;" data-i18n="label_weekly_template_vars">Available Variables</div>
+                <pre id="weekly-template-variables" style="font-size: 0.75rem; padding: 0; background: none;"></pre>
               </div>
             </div>
-            <textarea id="weekly-template" rows="8"></textarea>
-            <div id="weekly-template-vars-panel" class="template-vars-panel hidden">
-              <div class="template-vars-title" data-i18n="label_weekly_template_vars">Weekly Template Variables</div>
-              <pre id="weekly-template-variables"></pre>
+          </div>
+        </section>
+
+        <!-- Application Preferences Section -->
+        <section class="settings-section">
+          <div class="settings-section-title">
+            <span class="material-symbols-outlined" style="font-size: 20px;">settings_applications</span>
+            <h2>应用偏好设置</h2>
+          </div>
+          
+          <div class="settings-card" style="padding: 2.5rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3rem;">
+              <div class="form-group">
+                <label class="text-on-surface-variant font-mono" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;" data-i18n="label_default_language">Default Language</label>
+                <select id="default-ac-language" style="background-color: var(--surface-container-highest); border: none; padding: 0.75rem 1rem;">
+                  <option value="c">C</option>
+                  <option value="cpp">C++</option>
+                  <option value="python">Python</option>
+                  <option value="java">Java</option>
+                </select>
+                <p class="text-on-surface-variant" style="font-size: 10px; font-style: italic; margin-top: 0.5rem; line-height: 1.4; opacity: 0.6;" data-i18n="hint_default_language_variable">The default workspace configuration for new problems.</p>
+              </div>
+
+              <div class="form-group">
+                <label class="text-on-surface-variant font-mono" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;" data-i18n="label_storage_path">Local Storage Path</label>
+                <div style="display: flex; gap: 0.75rem;">
+                  <input id="storage-base-dir" type="text" readonly style="background-color: var(--surface-container-highest); border: none; padding: 0.75rem 1rem; font-family: var(--font-mono); font-size: 10px; flex: 1;" />
+                  <button id="pick-storage-dir-btn" class="btn btn-secondary" style="border: 1px solid var(--border-color); padding: 0 1rem; font-weight: 700; font-size: 12px; border-radius: 0.5rem;" data-i18n="btn_pick_storage_path">Pick</button>
+                </div>
+                <p class="text-on-surface-variant" style="font-size: 10px; font-style: italic; margin-top: 0.5rem; line-height: 1.4; opacity: 0.6;" data-i18n="hint_storage_path_migrate">Root directory for all synced problems and generated reports.</p>
+              </div>
+
+              <div class="form-group">
+                <label class="text-on-surface-variant font-mono" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.75rem;" data-i18n="label_editor_ecosystem">Editor Ecosystem</label>
+                <label style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background-color: var(--surface-container-highest); border-radius: 0.75rem; cursor: pointer; margin-bottom: 0.5rem;">
+                  <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <span class="material-symbols-outlined" style="color: var(--primary); font-size: 20px;">edit_note</span>
+                    <span class="text-on-surface" style="font-weight: 700; font-size: 14px;" data-i18n="label_obsidian_mode">Obsidian Mode</span>
+                  </div>
+                  <input id="obsidian-mode-enabled" type="checkbox" style="width: 18px; height: 18px; cursor: pointer; border-radius: 0.25rem; accent-color: var(--primary);" />
+                </label>
+                <p class="text-on-surface-variant" style="font-size: 10px; font-style: italic; margin-top: 0.5rem; line-height: 1.4; opacity: 0.6;" data-i18n="hint_obsidian_mode">Enables .md exports and Obsidian-compatible internal linking.</p>
+              </div>
+              <div class="form-group">
+                <label class="text-on-surface-variant font-mono" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;" data-i18n="label_weekly_prompt_style">Solution Prompt Style</label>
+                <select id="weekly-prompt-style" style="background-color: var(--surface-container-highest); border: none; padding: 0.75rem 1rem;">
+                  <option value="custom" data-i18n="style_custom">Custom</option>
+                  <option value="rigorous" data-i18n="style_rigorous">Rigorous</option>
+                  <option value="intuitive" data-i18n="style_intuitive">Intuitive</option>
+                  <option value="concise" data-i18n="style_concise">Concise</option>
+                </select>
+                <p class="text-on-surface-variant" style="font-size: 10px; font-style: italic; margin-top: 0.5rem; line-height: 1.4; opacity: 0.6;" data-i18n="hint_style_options">Choose a style to auto-inject guidance into solution generation.</p>
+              </div>
+            </div>
+
+            <!-- Styles Injections -->
+            <div style="margin-top: 2rem;">
+              <label class="text-on-surface-variant font-mono" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.75rem;" data-i18n="label_weekly_style_injections">Solution Style Prompt Injections</label>
+              
+              <div id="injection-custom-container" class="form-group">
+                <textarea id="style-injection-custom" rows="3" data-i18n-placeholder="placeholder_style_injection_custom" style="background-color: var(--surface-container-highest); border: none;"></textarea>
+              </div>
+              
+              <div id="injection-rigorous-container" class="form-group hidden">
+                <textarea id="style-injection-rigorous" rows="3" data-i18n-placeholder="placeholder_style_injection_rigorous" style="background-color: var(--surface-container-highest); border: none;"></textarea>
+              </div>
+
+              <div id="injection-intuitive-container" class="form-group hidden">
+                <textarea id="style-injection-intuitive" rows="3" data-i18n-placeholder="placeholder_style_injection_intuitive" style="background-color: var(--surface-container-highest); border: none;"></textarea>
+              </div>
+
+              <div id="injection-concise-container" class="form-group hidden">
+                <textarea id="style-injection-concise" rows="3" data-i18n-placeholder="placeholder_style_injection_concise" style="background-color: var(--surface-container-highest); border: none;"></textarea>
+              </div>
             </div>
           </div>
-          <div class="form-group">
-            <label data-i18n="label_default_language">Default Language (Template Variable)</label>
-            <select id="default-ac-language">
-              <option value="c">C</option>
-              <option value="cpp">C++</option>
-              <option value="python">Python</option>
-              <option value="java">Java</option>
-            </select>
-            <div class="helper-note" data-i18n="hint_default_language_variable">This value is injected as
-              {{default_ac_language}} in solution prompt templates.</div>
-          </div>
-          <div class="form-group">
-            <label data-i18n="label_storage_path">Storage Path</label>
-            <div style="display:flex; gap:0.5rem;">
-              <input id="storage-base-dir" type="text" readonly />
-              <button id="pick-storage-dir-btn" class="btn btn-secondary" type="button"
-                data-i18n="btn_pick_storage_path">Pick</button>
-            </div>
-            <div class="helper-note" data-i18n="hint_storage_path_migrate">Switching storage path migrates all
-              local data files.</div>
-          </div>
-          <div class="form-group">
-            <label class="obsidian-mode-toggle">
-              <input id="obsidian-mode-enabled" type="checkbox" />
-              <span data-i18n="label_obsidian_mode">Obsidian Mode</span>
-            </label>
-            <div class="helper-note" data-i18n="hint_obsidian_mode">When enabled, both problem and solution markdown files include YAML frontmatter tags for Obsidian.</div>
-          </div>
-          <div class="row-actions">
-            <button id="save-settings-btn" class="btn" data-i18n="btn_save_settings">Save Settings</button>
-          </div>
-        </div>
+        </section>
+
+        <!-- Save Button -->
+        <section style="display: flex; justify-content: flex-end; padding-top: 0.5rem; margin-bottom: 4rem;">
+          <button id="save-settings-btn" class="btn-primary-gradient" data-i18n="btn_save_settings">保存模板与应用设置</button>
+        </section>
       </div>
     </div>
 

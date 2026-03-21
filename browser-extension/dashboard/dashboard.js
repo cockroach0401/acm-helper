@@ -1265,44 +1265,50 @@ function renderAiProfileCards() {
   container.innerHTML = aiProfilesState.profiles.map(profile => {
     const isActive = profile.id === aiProfilesState.activeProfileId;
     const isSelected = profile.id === aiProfilesState.selectedProfileId;
-    const activePart = isActive
-      ? `<span class="ai-active-badge">${t('label_active_provider')}</span>`
-      : `<button type="button" class="btn btn-sm btn-secondary ai-activate-btn" data-profile-id="${escapeHtml(profile.id)}">${t('btn_activate_provider')}</button>`;
-    const disabledDelete = aiProfilesState.profiles.length <= 1 ? 'disabled' : '';
+    
+    const activeBadge = isActive 
+      ? `<span class="badge" data-i18n="label_active_provider">Active</span>` 
+      : '';
 
     return `
-      <div class="ai-profile-card${isActive ? ' active' : ''}${isSelected ? ' selected' : ''}" data-profile-id="${escapeHtml(profile.id)}">
-        <div class="ai-profile-main">
-          <div class="ai-profile-name">${escapeHtml(profile.name)}</div>
-          <div class="ai-profile-meta">${escapeHtml(profile.provider)} · ${escapeHtml(profile.model)}</div>
+      <div class="ai-profile-item-v2${isSelected ? ' active' : ''}" data-profile-id="${escapeHtml(profile.id)}">
+        <div style="flex: 1;">
+          <div class="name">${escapeHtml(profile.name)}</div>
+          <div class="model">${escapeHtml(profile.model)}</div>
         </div>
-        <div class="ai-profile-actions">
-          ${activePart}
-          <button type="button" class="btn btn-sm btn-secondary ai-edit-btn" data-profile-id="${escapeHtml(profile.id)}">${t('btn_edit_provider')}</button>
-          <button type="button" class="btn btn-sm btn-danger ai-delete-btn" data-profile-id="${escapeHtml(profile.id)}" ${disabledDelete}>${t('btn_delete_provider')}</button>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          ${activeBadge}
+          ${!isActive ? `<button type="button" class="ai-activate-btn" style="background: none; border: none; color: var(--primary); font-size: 10px; font-weight: 700; text-transform: uppercase; cursor: pointer; padding: 4px;" data-profile-id="${escapeHtml(profile.id)}" data-i18n="btn_activate_provider">Activate</button>` : ''}
+          <button type="button" class="ai-delete-btn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px;" data-profile-id="${escapeHtml(profile.id)}" ${aiProfilesState.profiles.length <= 1 ? 'disabled' : ''}>
+            <span class="material-symbols-outlined" style="font-size: 18px;">delete</span>
+          </button>
         </div>
       </div>
     `;
   }).join('');
 
-  container.querySelectorAll('.ai-profile-card').forEach(card => {
+  container.querySelectorAll('.ai-profile-item-v2').forEach(card => {
     card.addEventListener('click', (event) => {
       if (event.target.closest('button')) return;
       selectAiProfile(card.dataset.profileId || '');
     });
   });
 
-  container.querySelectorAll('.ai-edit-btn').forEach(btn => {
-    btn.addEventListener('click', () => selectAiProfile(btn.dataset.profileId || ''));
-  });
-
   container.querySelectorAll('.ai-activate-btn').forEach(btn => {
-    btn.addEventListener('click', () => activateAiProfile(btn.dataset.profileId || ''));
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      activateAiProfile(btn.dataset.profileId || '');
+    });
   });
 
   container.querySelectorAll('.ai-delete-btn').forEach(btn => {
-    btn.addEventListener('click', () => deleteAiProfile(btn.dataset.profileId || ''));
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteAiProfile(btn.dataset.profileId || '');
+    });
   });
+  
+  applyTranslations(); // Re-apply for new badges/buttons
 }
 
 function renderAiSettings(ai, preferredProfileId = '') {
@@ -1370,6 +1376,16 @@ function renderSettings(settings, preferredProfileId = '') {
     obsidianModeEl.checked = !!ui.obsidian_mode_enabled;
   }
 
+  // Update Temperature display
+  const tempInput = $('#ai-temperature');
+  const tempDisplay = $('#temperature-display');
+  if (tempInput && tempDisplay) {
+    tempDisplay.textContent = tempInput.value;
+    tempInput.addEventListener('input', () => {
+      tempDisplay.textContent = tempInput.value;
+    });
+  }
+
   captureSettingsBaseline();
 }
 
@@ -1411,8 +1427,12 @@ function updateStyleInjectionVisibility() {
 
   ids.forEach(id => {
     const el = $(`#style-injection-${id}`);
+    const container = $(`#injection-${id}-container`);
     if (el) {
       el.classList.toggle('hidden', id !== style);
+    }
+    if (container) {
+      container.classList.toggle('hidden', id !== style);
     }
   });
 }
@@ -2619,6 +2639,7 @@ async function init() {
   bind('#reset-solution-template-btn', () => resetPromptTemplate('solution'));
   bind('#reset-weekly-template-btn', () => resetPromptTemplate('insight'));
   bind('#save-settings-btn', saveAllSettings);
+  bind('#save-settings-btn-top', saveAllSettings);
   bind('#pick-storage-dir-btn', pickStorageDirectory);
 
   // Metadata Save
