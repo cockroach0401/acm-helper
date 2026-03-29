@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 import shutil
 import threading
 import uuid
@@ -21,7 +22,15 @@ from ..models.problem import (
     SolutionStatus,
     TranslationStatus,
 )
-from ..models.settings import AIProfile, AIProvider, AISettings, PromptSettings, SettingsBundle, UiSettings
+from ..models.settings import (
+    AIProfile,
+    AIProvider,
+    AISettings,
+    MarkdownNamingMode,
+    PromptSettings,
+    SettingsBundle,
+    UiSettings,
+)
 from ..models.solution import ReportStatusResponse
 from ..models.task import SolutionTaskRecord, TaskStatus, TaskType
 
@@ -46,6 +55,12 @@ class FileManager:
     _ALLOWED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
     _MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024  # 5MB
     _MAX_IMAGES_PER_PROBLEM = 10
+    _INVALID_FILENAME_CHARS = '<>:"/\\|?*'
+    _SOLUTION_META_PREFIX = "<!-- ACM_HELPER_SOLUTION"
+    _SOLUTION_META_RE = re.compile(
+        r'<!--\s*ACM_HELPER_SOLUTION\s+source="(?P<source>[^"]+)"\s+id="(?P<id>[^"]+)"\s*-->',
+        re.IGNORECASE,
+    )
 
     def __init__(self, base_dir: Path):
         self._lock = threading.RLock()
@@ -143,39 +158,257 @@ class FileManager:
             }
 
     def _problem_md_path(self, record: ProblemRecord) -> Path:
-        month = month_from_dt(record.created_at)
-        problem_dir = self.base / month / "problems"
-        problem_dir.mkdir(parents=True, exist_ok=True)
-        return problem_dir / f"{record.source}_{record.id}.md"
+        return self._preferred_problem_md_path(record)
 
     def _iter_problem_markdown_paths(self, source: str, problem_id: str) -> list[Path]:
-        filename = f"{source}_{problem_id}.md"
-        return sorted(self.base.glob(f"*/problems/{filename}"))
+        legacy_name = f"{source}_{problem_id}.md"
+        matched: list[Path] = []
+        for path in sorted(self.base.glob("*/problems/*.md")):
+            if path.name == legacy_name or self._markdown_matches_problem(path, source, problem_id):
+                matched.append(path)
+        return matched
 
     def _iter_solution_markdown_paths(self, source: str, problem_id: str) -> list[Path]:
         base_name = f"{source}_{problem_id}"
-        matched = sorted(self.base.glob(f"*/solutions/{base_name}*.md"))
-        return [
-            path
-            for path in matched
-            if path.name == f"{base_name}.md" or path.name.startswith(f"{base_name}__dup_")
-        ]
+        matched: list[Path] = []
+        for path in sorted(self.base.glob("*/solutions/*.md")):
+            if (
+                path.name == f"{base_name}.md"
+                or path.name.startswith(f"{base_name}__dup_")
+                or self._markdown_matches_solution(path, source, problem_id)
+            ):
+                matched.append(path)
+        return matched
 
-    def _next_available_solution_md_path(self, source: str, problem_id: str, month: str) -> Path:
+    def _next_available_solution_md_path(self, record: ProblemRecord, month: str) -> Path:
         solution_dir = self.base / month / "solutions"
         solution_dir.mkdir(parents=True, exist_ok=True)
-
-        base_name = f"{source}_{problem_id}"
-        base_path = solution_dir / f"{base_name}.md"
+        current_dir_paths = [
+            path
+            for path in self._iter_solution_markdown_paths(record.source, record.id)
+            if path.parent == solution_dir
+        ]
+        base_path = self._preferred_solution_base_path(record, month, existing_paths=current_dir_paths)
         if not base_path.exists():
             return base_path
 
         idx = 2
         while True:
-            candidate = solution_dir / f"{base_name}__dup_{idx}.md"
+            candidate = solution_dir / f"{base_path.stem}__dup_{idx}.md"
             if not candidate.exists():
                 return candidate
             idx += 1
+
+    def _problem_dir(self, month: str) -> Path:
+        problem_dir = self.base / month / "problems"
+        problem_dir.mkdir(parents=True, exist_ok=True)
+        return problem_dir
+
+    def _solution_dir(self, month: str) -> Path:
+        solution_dir = self.base / month / "solutions"
+        solution_dir.mkdir(parents=True, exist_ok=True)
+        return solution_dir
+
+    def _sanitize_title_for_filename(self, title: str) -> str:
+        text = str(title or "").strip()
+        translation_table = str.maketrans({ch: "_" for ch in self._INVALID_FILENAME_CHARS})
+        text = text.translate(translation_table)
+        text = re.sub(r"\s+", " ", text).strip(" .")
+        text = text.replace(" ", "_")
+        return text or "untitled"
+
+    def _problem_title_stem(self, record: ProblemRecord) -> str:
+        return self._sanitize_title_for_filename(record.title)
+
+    def _markdown_naming_mode(self) -> MarkdownNamingMode:
+        try:
+            return self.get_settings().ui.markdown_naming_mode
+        except Exception:
+            return MarkdownNamingMode.title
+
+    def _legacy_problem_md_name(self, source: str, problem_id: str) -> str:
+        return f"{source}_{problem_id}.md"
+
+    def _legacy_solution_md_name(self, source: str, problem_id: str) -> str:
+        return f"{source}_{problem_id}.md"
+
+    def _problem_conflict_stem(self, record: ProblemRecord) -> str:
+        return f"{self._problem_title_stem(record)}__{record.source}_{record.id}"
+
+    def _solution_conflict_stem(self, record: ProblemRecord) -> str:
+        return f"{self._problem_title_stem(record)}__{record.source}_{record.id}"
+
+    def _parse_markdown_identity_value(self, raw: str) -> str:
+        text = str(raw or "").strip()
+        if len(text) >= 2 and text[0] == text[-1] and text[0] in {"'", '"'}:
+            return text[1:-1]
+        try:
+            decoded = json.loads(text)
+            if isinstance(decoded, str):
+                return decoded
+        except json.JSONDecodeError:
+            pass
+        return text
+
+    def _read_text_if_exists(self, path: Path) -> str:
+        try:
+            return path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            return ""
+
+    def _extract_problem_identity_from_text(self, text: str) -> tuple[str, str] | None:
+        source_match = re.search(r"(?m)^(?:-\s*)?来源:\s*(.+?)\s*$", text)
+        id_match = re.search(r"(?m)^(?:-\s*)?题目ID:\s*(.+?)\s*$", text)
+        if not source_match or not id_match:
+            return None
+        source = self._parse_markdown_identity_value(source_match.group(1))
+        problem_id = self._parse_markdown_identity_value(id_match.group(1))
+        if not source or not problem_id:
+            return None
+        return source, problem_id
+
+    def _extract_solution_identity_from_text(self, text: str) -> tuple[str, str] | None:
+        meta_match = self._SOLUTION_META_RE.search(text)
+        if meta_match:
+            return meta_match.group("source"), meta_match.group("id")
+        return self._extract_problem_identity_from_text(text)
+
+    def _markdown_matches_problem(self, path: Path, source: str, problem_id: str) -> bool:
+        text = self._read_text_if_exists(path)
+        identity = self._extract_problem_identity_from_text(text)
+        return identity == (source, problem_id)
+
+    def _markdown_matches_solution(self, path: Path, source: str, problem_id: str) -> bool:
+        text = self._read_text_if_exists(path)
+        identity = self._extract_solution_identity_from_text(text)
+        return identity == (source, problem_id)
+
+    def _path_belongs_to_problem(
+        self,
+        path: Path,
+        source: str,
+        problem_id: str,
+        *,
+        solution: bool = False,
+    ) -> bool:
+        if solution:
+            return self._markdown_matches_solution(path, source, problem_id)
+        return self._markdown_matches_problem(path, source, problem_id)
+
+    def _preferred_problem_md_path(self, record: ProblemRecord, existing_paths: list[Path] | None = None) -> Path:
+        month = month_from_dt(record.created_at)
+        problem_dir = self._problem_dir(month)
+        if self._markdown_naming_mode() == MarkdownNamingMode.source_id:
+            return problem_dir / self._legacy_problem_md_name(record.source, record.id)
+        preferred = problem_dir / f"{self._problem_title_stem(record)}.md"
+        if preferred.exists():
+            if preferred in (existing_paths or []) or self._path_belongs_to_problem(preferred, record.source, record.id):
+                return preferred
+            return problem_dir / f"{self._problem_conflict_stem(record)}.md"
+        return preferred
+
+    def _preferred_solution_base_path(
+        self,
+        record: ProblemRecord,
+        month: str,
+        existing_paths: list[Path] | None = None,
+    ) -> Path:
+        solution_dir = self._solution_dir(month)
+        if self._markdown_naming_mode() == MarkdownNamingMode.source_id:
+            return solution_dir / self._legacy_solution_md_name(record.source, record.id)
+        preferred = solution_dir / f"{self._problem_title_stem(record)}.md"
+        if preferred.exists():
+            if preferred in (existing_paths or []) or self._path_belongs_to_problem(
+                preferred,
+                record.source,
+                record.id,
+                solution=True,
+            ):
+                return preferred
+            return solution_dir / f"{self._solution_conflict_stem(record)}.md"
+        return preferred
+
+    def _build_solution_meta_comment(self, record: ProblemRecord) -> str:
+        return f'<!-- ACM_HELPER_SOLUTION source="{record.source}" id="{record.id}" -->'
+
+    def _split_solution_markdown(self, text: str) -> tuple[bool, str]:
+        rest = text or ""
+        has_frontmatter = False
+        if rest.startswith("---\n"):
+            end = rest.find("\n---\n", 4)
+            if end != -1:
+                has_frontmatter = True
+                rest = rest[end + len("\n---\n") :]
+                if rest.startswith("\n"):
+                    rest = rest[1:]
+        rest = re.sub(r"^<!--\s*ACM_HELPER_SOLUTION\s+source=\"[^\"]+\"\s+id=\"[^\"]+\"\s*-->\n?", "", rest, count=1)
+        if rest.startswith("## 原题引用\n"):
+            _, _, remainder = rest.partition("\n\n")
+            rest = remainder
+        return has_frontmatter, rest.lstrip("\n")
+
+    def _render_solution_markdown(
+        self,
+        record: ProblemRecord,
+        body: str,
+        solution_path: Path,
+        *,
+        include_frontmatter: bool,
+    ) -> str:
+        problem_md_path = self._save_problem_markdown(record)
+        relative_problem_md = os.path.relpath(problem_md_path, start=solution_path.parent).replace("\\", "/")
+        reference_block = "\n".join(
+            [
+                self._build_solution_meta_comment(record),
+                "## 原题引用",
+                f"- [打开原题]({relative_problem_md})",
+                "",
+            ]
+        )
+        trimmed_body = (body or "").rstrip("\n")
+        parts: list[str] = []
+        if include_frontmatter:
+            parts.append(self._build_solution_frontmatter(record).rstrip("\n"))
+        parts.append(reference_block.rstrip("\n"))
+        if trimmed_body:
+            parts.append(trimmed_body)
+        return "\n\n".join(parts).rstrip() + "\n"
+
+    def _rewrite_solution_file(self, path: Path, record: ProblemRecord) -> str:
+        existing = self._read_text_if_exists(path)
+        has_frontmatter, body = self._split_solution_markdown(existing)
+        return self._render_solution_markdown(record, body, path, include_frontmatter=has_frontmatter)
+
+    def _rewrite_solution_files_for_problem(self, record: ProblemRecord) -> None:
+        solution_paths = self._iter_solution_markdown_paths(record.source, record.id)
+        if not solution_paths:
+            return
+        grouped: dict[Path, list[Path]] = {}
+        for path in solution_paths:
+            grouped.setdefault(path.parent, []).append(path)
+        for month_dir, paths in grouped.items():
+            month = month_dir.parent.name
+            ordered = sorted(paths, key=lambda p: (p.name, p.stat().st_mtime if p.exists() else 0))
+            base_path = self._preferred_solution_base_path(record, month, existing_paths=ordered)
+            destinations = [base_path]
+            for idx in range(2, len(ordered) + 1):
+                destinations.append(month_dir / f"{base_path.stem}__dup_{idx}.md")
+            contents = [
+                self._render_solution_markdown(
+                    record,
+                    self._split_solution_markdown(self._read_text_if_exists(path))[1],
+                    destination,
+                    include_frontmatter=self._split_solution_markdown(self._read_text_if_exists(path))[0],
+                )
+                for path, destination in zip(ordered, destinations)
+            ]
+            for path in ordered:
+                try:
+                    path.unlink(missing_ok=True)
+                except OSError:
+                    continue
+            for destination, content in zip(destinations, contents):
+                destination.write_text(content, encoding="utf-8")
 
     def _yaml_escape(self, value: str) -> str:
         text = str(value or "")
@@ -242,31 +475,13 @@ class FileManager:
         return "\n".join(lines)
 
     def _build_solution_markdown(self, record: ProblemRecord, content: str, solution_path: Path) -> str:
-        body = (content or "").rstrip("\n")
-
-        problem_md_path = self._problem_md_path(record)
-        if not problem_md_path.exists():
-            problem_md_path.write_text(self._build_problem_markdown(record), encoding="utf-8")
-
-        relative_problem_md = os.path.relpath(problem_md_path, start=solution_path.parent).replace("\\", "/")
-        reference_block = "\n".join(
-            [
-                "## 原题引用",
-                f"- [打开原题]({relative_problem_md})",
-                "",
-            ]
-        )
-
         settings = self.get_settings()
-        if settings.ui.obsidian_mode_enabled:
-            frontmatter = self._build_solution_frontmatter(record)
-            if body:
-                return f"{frontmatter}{reference_block}{body}\n"
-            return f"{frontmatter}{reference_block}"
-
-        if body:
-            return f"{reference_block}{body}\n"
-        return f"{reference_block}"
+        return self._render_solution_markdown(
+            record,
+            content,
+            solution_path,
+            include_frontmatter=settings.ui.obsidian_mode_enabled,
+        )
 
     def _build_problem_markdown(self, record: ProblemRecord) -> str:
         settings = self.get_settings()
@@ -387,8 +602,16 @@ class FileManager:
         return default_language
 
     def _save_problem_markdown(self, record: ProblemRecord) -> str:
-        md_path = self._problem_md_path(record)
+        existing_paths = self._iter_problem_markdown_paths(record.source, record.id)
+        md_path = self._preferred_problem_md_path(record, existing_paths=existing_paths)
         md_path.write_text(self._build_problem_markdown(record), encoding="utf-8")
+        for path in existing_paths:
+            if path == md_path:
+                continue
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                continue
         return str(md_path)
 
     def _ensure_json_file(self, path: Path, default_obj: dict) -> None:
@@ -777,6 +1000,7 @@ class FileManager:
                 record = ProblemRecord.model_validate(raw)
             except ValidationError:
                 return None
+            old_title = record.title
 
             if title is not None:
                 record.title = title
@@ -812,15 +1036,19 @@ class FileManager:
             data[key] = record.model_dump(mode="json")
             self._write_json(self.problems_file, data)
             self._save_problem_markdown(record)
+            if title is not None and title != old_title and self._markdown_naming_mode() == MarkdownNamingMode.title:
+                self._rewrite_solution_files_for_problem(record)
             return record
 
     def get_problem_markdown(self, source: str, problem_id: str) -> str | None:
         record = self.get_problem(source, problem_id)
         if record is None:
             return None
-        md_path = self._problem_md_path(record)
-        if md_path.exists():
-            return md_path.read_text(encoding="utf-8")
+        md_paths = self._iter_problem_markdown_paths(source, problem_id)
+        if md_paths:
+            best = max(md_paths, key=lambda p: p.stat().st_mtime)
+            if best.exists():
+                return best.read_text(encoding="utf-8")
         return self._build_problem_markdown(record)
 
     def mark_problem_translation_running(self, source: str, problem_id: str) -> ProblemRecord | None:
@@ -1224,7 +1452,7 @@ class FileManager:
 
     def save_solution_file(self, problem: ProblemRecord, content: str) -> str:
         month = current_month()
-        path = self._next_available_solution_md_path(problem.source, problem.id, month)
+        path = self._next_available_solution_md_path(problem, month)
         final_content = self._build_solution_markdown(problem, content, path)
         path.write_text(final_content, encoding="utf-8")
         return str(path)
@@ -1547,15 +1775,29 @@ class FileManager:
     def update_ui_settings(self, ui_settings: UiSettings) -> SettingsBundle:
         with self._lock:
             current = self.get_settings()
+            naming_mode_changed = current.ui.markdown_naming_mode != ui_settings.markdown_naming_mode
             current.ui = UiSettings(
                 default_ac_language=ui_settings.default_ac_language,
                 storage_base_dir=(ui_settings.storage_base_dir or "").strip() or self.get_storage_base_dir(),
                 autostart_enabled=ui_settings.autostart_enabled,
                 autostart_silent=ui_settings.autostart_silent,
                 obsidian_mode_enabled=ui_settings.obsidian_mode_enabled,
+                markdown_naming_mode=ui_settings.markdown_naming_mode,
             )
             self._write_json(self.settings_file, current.model_dump(mode="json"))
+            if naming_mode_changed:
+                self._migrate_markdown_naming_mode_locked()
             return current
+
+    def _migrate_markdown_naming_mode_locked(self) -> None:
+        data = self._read_json(self.problems_file)
+        for raw in data.values():
+            try:
+                record = ProblemRecord.model_validate(raw)
+            except ValidationError:
+                continue
+            self._save_problem_markdown(record)
+            self._rewrite_solution_files_for_problem(record)
 
     def remove_model_option(self, model_name: str) -> SettingsBundle:
         with self._lock:
@@ -1573,4 +1815,3 @@ class FileManager:
             )
             self._write_json(self.settings_file, current.model_dump(mode="json"))
             return current
-

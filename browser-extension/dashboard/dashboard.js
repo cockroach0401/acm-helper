@@ -320,7 +320,8 @@ function readSettingsFormSnapshot() {
     weekly_style_concise_injection: $('#style-injection-concise')?.value || '',
     default_ac_language: $('#default-ac-language')?.value || 'cpp',
     storage_base_dir: (storageBaseDirEl?.value || '').trim(),
-    obsidian_mode_enabled: !!$('#obsidian-mode-enabled')?.checked
+    obsidian_mode_enabled: !!$('#obsidian-mode-enabled')?.checked,
+    markdown_naming_mode: $('#markdown-naming-mode')?.value || 'title'
   };
 }
 
@@ -354,6 +355,7 @@ function restoreSettingsFromBaseline() {
   setValue('#style-injection-concise', settingsFormBaseline.weekly_style_concise_injection || '');
   setValue('#default-ac-language', settingsFormBaseline.default_ac_language || 'cpp');
   setValue('#storage-base-dir', settingsFormBaseline.storage_base_dir || '');
+  setValue('#markdown-naming-mode', settingsFormBaseline.markdown_naming_mode || 'title');
 
   const obsidianModeEl = $('#obsidian-mode-enabled');
   if (obsidianModeEl) obsidianModeEl.checked = !!settingsFormBaseline.obsidian_mode_enabled;
@@ -1375,6 +1377,12 @@ function renderSettings(settings, preferredProfileId = '') {
     obsidianModeEl.checked = !!ui.obsidian_mode_enabled;
   }
 
+  const markdownNamingModeEl = $('#markdown-naming-mode');
+  if (markdownNamingModeEl) {
+    const mode = String(ui.markdown_naming_mode || 'title').trim();
+    markdownNamingModeEl.value = ['title', 'source_id'].includes(mode) ? mode : 'title';
+  }
+
   // Update Temperature display
   const tempInput = $('#ai-temperature');
   const tempDisplay = $('#temperature-display');
@@ -1687,7 +1695,8 @@ async function saveAllSettings() {
   const uiPayload = {
     default_ac_language: $('#default-ac-language').value,
     storage_base_dir: (storageBaseDirEl?.value || '').trim(),
-    obsidian_mode_enabled: !!$('#obsidian-mode-enabled')?.checked
+    obsidian_mode_enabled: !!$('#obsidian-mode-enabled')?.checked,
+    markdown_naming_mode: $('#markdown-naming-mode')?.value || 'title'
   };
 
   try {
@@ -2207,7 +2216,7 @@ function renderWeeklyBarChart(weeklyData) {
   container.innerHTML = data.map((d, i) => {
     const heightPercent = Math.round((Number(d.solved_count || 0) / maxVal) * 100);
     const date = d.period_start ? new Date(d.period_start) : null;
-    const label = date ? date.toLocaleDateString(getLang() === 'zh' ? 'zh-CN' : 'en-US', { weekday: 'short' }) : (labels[i] || '');
+    const label = date ? `${date.getMonth() + 1}/${date.getDate()}` : (labels[i] || '');
     
     return `
       <div class="progress-bar-group">

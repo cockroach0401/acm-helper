@@ -544,6 +544,14 @@
                 <p class="text-on-surface-variant" style="font-size: 10px; font-style: italic; margin-top: 0.5rem; line-height: 1.4; opacity: 0.6;" data-i18n="hint_obsidian_mode">Enables .md exports and Obsidian-compatible internal linking.</p>
               </div>
               <div class="form-group">
+                <label class="text-on-surface-variant font-mono" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;" data-i18n="label_markdown_naming_mode">Markdown Naming</label>
+                <select id="markdown-naming-mode" style="background-color: var(--surface-container-highest); border: none; padding: 0.75rem 1rem;">
+                  <option value="title" data-i18n="markdown_naming_title">By Title</option>
+                  <option value="source_id" data-i18n="markdown_naming_source_id">By Source + ID</option>
+                </select>
+                <p class="text-on-surface-variant" style="font-size: 10px; font-style: italic; margin-top: 0.5rem; line-height: 1.4; opacity: 0.6;" data-i18n="hint_markdown_naming_mode">Choose how problem and solution markdown files are named. Changing this also migrates existing files.</p>
+              </div>
+              <div class="form-group">
                 <label class="text-on-surface-variant font-mono" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;" data-i18n="label_weekly_prompt_style">Solution Prompt Style</label>
                 <select id="weekly-prompt-style" style="background-color: var(--surface-container-highest); border: none; padding: 0.75rem 1rem;">
                   <option value="custom" data-i18n="style_custom">Custom</option>

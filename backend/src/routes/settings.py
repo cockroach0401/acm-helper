@@ -148,6 +148,7 @@ def _sync_ui_autostart_state(fm: FileManager):
         autostart_enabled=state.enabled,
         autostart_silent=state.silent,
         obsidian_mode_enabled=settings.ui.obsidian_mode_enabled,
+        markdown_naming_mode=settings.ui.markdown_naming_mode,
     )
     return fm.update_ui_settings(ui)
 
@@ -448,6 +449,9 @@ def update_ui_settings(
         obsidian_mode_enabled=(
             req.obsidian_mode_enabled if req.obsidian_mode_enabled is not None else current.ui.obsidian_mode_enabled
         ),
+        markdown_naming_mode=(
+            req.markdown_naming_mode if req.markdown_naming_mode is not None else current.ui.markdown_naming_mode
+        ),
     )
     settings = fm.update_ui_settings(ui)
     return settings.model_dump(mode="json")
@@ -460,6 +464,5 @@ def delete_model_option(
 ):
     settings = fm.remove_model_option(model_name)
     return settings.model_dump(mode="json")
-
 
 

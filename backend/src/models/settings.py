@@ -25,6 +25,11 @@ class WeeklyPromptStyle(str, Enum):
     concise = "concise"
 
 
+class MarkdownNamingMode(str, Enum):
+    title = "title"
+    source_id = "source_id"
+
+
 class PromptTemplateResetTarget(str, Enum):
     solution = "solution"
     insight = "insight"
@@ -248,6 +253,7 @@ class UiSettings(BaseModel):
     autostart_enabled: bool = False
     autostart_silent: bool = True
     obsidian_mode_enabled: bool = False
+    markdown_naming_mode: MarkdownNamingMode = MarkdownNamingMode.title
 
 
 class UiSettingsUpdateRequest(BaseModel):
@@ -256,10 +262,10 @@ class UiSettingsUpdateRequest(BaseModel):
     autostart_enabled: bool | None = None
     autostart_silent: bool | None = None
     obsidian_mode_enabled: bool | None = None
+    markdown_naming_mode: MarkdownNamingMode | None = None
 
 
 class SettingsBundle(BaseModel):
     ai: AISettings = Field(default_factory=AISettings)
     prompts: PromptSettings = Field(default_factory=PromptSettings)
     ui: UiSettings = Field(default_factory=UiSettings)
-

@@ -519,7 +519,8 @@ Base URL（默认）：`http://localhost:8000`
 
 ## 9) 题目 Markdown 存储约定（新增）
 
-- 路径：`backend/data/{YYYY-MM}/problems/{source}_{id}.md`
+- 路径：`backend/data/{YYYY-MM}/problems/{title}.md`
+- 若同月存在同名题目，会自动追加稳定后缀：`{title}__{source}_{id}.md`
 - 每次导入题目、更新状态、提交 AC 代码时都会刷新该文件。
 - 文件末尾固定保留：
   - `## My AC Code`（用户 AC 代码段）
