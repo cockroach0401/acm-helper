@@ -19,7 +19,8 @@
 ### 1. 题目与代码归档
 - **智能抓取**：自动提取网页中的题目描述、输入输出样例。
 - **结构化存储**：
-  - 默认路径：`backend/data/{YYYY-MM}/problems/{source}_{id}.md`
+  - 默认路径：`backend/data/{YYYY-MM}/problems/{title}.md`
+  - 同名题目会自动追加稳定后缀：`{title}__{source}_{id}.md`
   - 例如：`backend/data/2023-10/problems/codeforces_1800A.md`
 
 ### 2. 交互式仪表盘 (Dashboard)
