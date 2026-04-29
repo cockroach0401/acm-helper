@@ -56,7 +56,6 @@ class FileManager:
     _MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024  # 5MB
     _MAX_IMAGES_PER_PROBLEM = 10
     _INVALID_FILENAME_CHARS = '<>:"/\\|?*'
-    _SOLUTION_META_PREFIX = "<!-- ACM_HELPER_SOLUTION"
     _SOLUTION_META_RE = re.compile(
         r'<!--\s*ACM_HELPER_SOLUTION\s+source="(?P<source>[^"]+)"\s+id="(?P<id>[^"]+)"\s*-->',
         re.IGNORECASE,
@@ -327,6 +326,9 @@ class FileManager:
                 return preferred
             return solution_dir / f"{self._solution_conflict_stem(record)}.md"
         return preferred
+
+    def _build_solution_meta_comment(self, record: ProblemRecord) -> str:
+        return f'<!-- ACM_HELPER_SOLUTION source="{record.source}" id="{record.id}" -->'
 
     def _build_solution_meta_comment(self, record: ProblemRecord) -> str:
         return f'<!-- ACM_HELPER_SOLUTION source="{record.source}" id="{record.id}" -->'
